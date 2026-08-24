@@ -1,0 +1,127 @@
+diff --git a/Common/GPU/Shader.cpp b/Common/GPU/Shader.cpp
+index 2fe810bb73..9f5b030f20 100644
+--- a/Common/GPU/Shader.cpp
++++ b/Common/GPU/Shader.cpp
+@@ -1,10 +1,14 @@
++#include <cstring>
++
+ #include "Common/GPU/Shader.h"
+ 
+ #ifdef USE_CRT_DBG
+ #undef new
+ #endif
+ 
++#ifndef SOFTGPU_ONLY
+ #include "ext/glslang/SPIRV/GlslangToSpv.h"
++#endif
+ 
+ const char *ShaderLanguageAsString(ShaderLanguage lang) {
+ 	switch (lang) {
+@@ -111,6 +115,7 @@ void ShaderLanguageDesc::Init(ShaderLanguage lang) {
+ 	}
+ }
+ 
++#ifndef SOFTGPU_ONLY
+ void InitShaderResources(TBuiltInResource &Resources) {
+ 	Resources.maxLights = 32;
+ 	Resources.maxClipPlanes = 6;
+@@ -206,3 +211,4 @@ void InitShaderResources(TBuiltInResource &Resources) {
+ 	Resources.limits.generalVariableIndexing = 1;
+ 	Resources.limits.generalConstantMatrixVectorIndexing = 1;
+ }
++#endif  // SOFTGPU_ONLY
+diff --git a/Core/Debugger/SymbolMap.cpp b/Core/Debugger/SymbolMap.cpp
+index 9f4b115cd5..8ed3c98c2e 100644
+--- a/Core/Debugger/SymbolMap.cpp
++++ b/Core/Debugger/SymbolMap.cpp
+@@ -36,7 +36,9 @@
+ 
+ #include "zlib.h"
+ 
++#ifndef CHIMERA_WATERBOX
+ #include "ext/armips/Core/Assembler.h"
++#endif
+ 
+ #include "Common/CommonTypes.h"
+ #include "Common/Log.h"
+@@ -1109,6 +1111,7 @@ DataType SymbolMap::GetDataType(u32 startAddress) {
+ 	return it->second.type;
+ }
+ 
++#ifndef CHIMERA_WATERBOX
+ void SymbolMap::GetLabels(std::vector<LabelDefinition> &dest) {
+ 	if (activeNeedUpdate_)
+ 		UpdateActiveSymbols();
+@@ -1123,6 +1126,7 @@ void SymbolMap::GetLabels(std::vector<LabelDefinition> &dest) {
+ 		dest.push_back(entry);
+ 	}
+ }
++#endif  // CHIMERA_WATERBOX
+ 
+ #if defined(_WIN32) && !PPSSPP_PLATFORM(UWP)
+ 
+diff --git a/Core/Util/PortManager.h b/Core/Util/PortManager.h
+index b42e3f9e08..6ffc8ead5f 100644
+--- a/Core/Util/PortManager.h
++++ b/Core/Util/PortManager.h
+@@ -21,7 +21,11 @@
+ 
+ #pragma once
+ 
+-#ifdef USE_SYSTEM_MINIUPNPC
++#ifdef CHIMERA_WATERBOX
++// No UPnP in the deterministic sandbox; the class below is stubbed
++// (waterbox/stubs/PortManager.cpp) and never touches the network.
++#define UPNP_LOCAL_PORT_ANY 0
++#elif defined(USE_SYSTEM_MINIUPNPC)
+ #include <miniupnpc/miniwget.h>
+ #include <miniupnpc/miniupnpc.h>
+ #include <miniupnpc/upnpcommands.h>
+diff --git a/GPU/GPU.cpp b/GPU/GPU.cpp
+index ac0c39ba64..8b79b840ad 100644
+--- a/GPU/GPU.cpp
++++ b/GPU/GPU.cpp
+@@ -25,13 +25,15 @@
+ #include "GPU/GPU.h"
+ #include "GPU/GPUCommon.h"
+ 
++#ifndef SOFTGPU_ONLY
+ #if PPSSPP_API(ANY_GL)
+ #include "GPU/GLES/GPU_GLES.h"
+ #endif
+ #include "GPU/Vulkan/GPU_Vulkan.h"
++#endif
+ #include "GPU/Software/SoftGpu.h"
+ 
+-#if PPSSPP_API(D3D11)
++#if PPSSPP_API(D3D11) && !defined(SOFTGPU_ONLY)
+ #include "GPU/D3D11/GPU_D3D11.h"
+ #endif
+ 
+@@ -45,6 +47,9 @@ GPUDebugInterface *gpuDebug;
+ 
+ static GPUCommon *CreateGPUCore(GPUCore gpuCore, GraphicsContext *ctx, Draw::DrawContext *draw) {
+ 	switch (gpuCore) {
++	case GPUCORE_SOFTWARE:
++		return new SoftGPU(ctx, draw);
++#ifndef SOFTGPU_ONLY
+ 	case GPUCORE_GLES:
+ 		// Disable GLES on ARM Windows (but leave it enabled on other ARM platforms).
+ #if PPSSPP_API(ANY_GL)
+@@ -52,8 +57,6 @@ static GPUCommon *CreateGPUCore(GPUCore gpuCore, GraphicsContext *ctx, Draw::Dra
+ #else
+ 		return nullptr;
+ #endif
+-	case GPUCORE_SOFTWARE:
+-		return new SoftGPU(ctx, draw);
+ 	case GPUCORE_DIRECTX11:
+ #if PPSSPP_API(D3D11)
+ 		return new GPU_D3D11(ctx, draw);
+@@ -68,6 +71,7 @@ static GPUCommon *CreateGPUCore(GPUCore gpuCore, GraphicsContext *ctx, Draw::Dra
+ 			return nullptr;
+ 		}
+ 		return new GPU_Vulkan(ctx, draw);
++#endif
+ #endif
+ 	default:
+ 		return nullptr;
