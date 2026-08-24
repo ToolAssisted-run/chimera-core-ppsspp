@@ -1,0 +1,148 @@
+// The chimera guest ABI layer: wraps psp-driver into the miniBox core ABI
+// (the same export surface as chimera-core-quickernes/neshawk). Compiled ONLY
+// for the guest; run-native.cpp is the native twin.
+//
+// Input packing (FrameAdvance's u64), must match run-wbx.c and the frontend
+// keybind order in waterbox.config:
+//   bit 0..11 : Up, Down, Left, Right, Cross, Circle, Square, Triangle,
+//               Start, Select, L, R
+//   bit 16..23: left stick X, biased u8 (0=left, 128=center, 255=right)
+//   bit 24..31: left stick Y, biased u8 (0=up, 128=center, 255=down)
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <string>
+
+#include <emulibc.h>
+
+#include "psp-driver.h"
+
+#include "Core/HLE/sceCtrl.h"
+#include "Core/MemMap.h"
+
+static char g_loadError[512];
+static bool g_inited;
+
+static const uint32_t kButtonMap[12] = {
+	CTRL_UP, CTRL_DOWN, CTRL_LEFT, CTRL_RIGHT,
+	CTRL_CROSS, CTRL_CIRCLE, CTRL_SQUARE, CTRL_TRIANGLE,
+	CTRL_START, CTRL_SELECT, CTRL_LTRIGGER, CTRL_RTRIGGER,
+};
+
+// Fixed output buffers, savestated as ordinary guest memory.
+static uint32_t g_video[480 * 272];
+static int16_t g_audio[8192 * 2];
+static int g_audioFrames;
+
+extern "C" {
+
+ECL_EXPORT const char *GetLoadError(void) { return g_loadError; }
+
+ECL_EXPORT int Init(void)
+{
+	g_loadError[0] = '\0';
+
+	// The original rom filename, mounted by the driver/frontend so extension
+	// based detection still works; the rom bytes themselves are mounted under
+	// that name. Falls back to plain "rom".
+	char romName[256] = "rom";
+	if (FILE *f = fopen("rom.name", "rb")) {
+		size_t n = fread(romName, 1, sizeof romName - 1, f);
+		while (n > 0 && (romName[n - 1] == '\n' || romName[n - 1] == '\r'))
+			n--;
+		romName[n] = '\0';
+		fclose(f);
+	}
+
+	PspDrvConfig cfg;
+	cfg.bootPath = romName;
+	cfg.assetsDir = "";     // TODO(M4): assets blob VFS backend
+	cfg.memstickDir = "";   // TODO(M4): RAM memory stick filesystem
+	cfg.cpuCore = 2;        // IR interpreter
+	cfg.threads = 2;
+	cfg.verboseLog = true;
+	cfg.collectDebugOutput = false;
+
+	std::string err;
+	if (!pspdrv_boot(cfg, &err)) {
+		snprintf(g_loadError, sizeof g_loadError, "%s", err.c_str());
+		printf("chimera-ppsspp: cannot boot: %s\n", err.c_str());
+		return 0;
+	}
+	g_inited = true;
+	return 1;
+}
+
+ECL_EXPORT void FrameAdvance(uint64_t input)
+{
+	if (!g_inited)
+		return;
+
+	PspDrvInput in;
+	for (int i = 0; i < 12; i++)
+		if (input & (1ull << i))
+			in.buttons |= kButtonMap[i];
+	int lx = (int)((input >> 16) & 0xFF);
+	int ly = (int)((input >> 24) & 0xFF);
+	if (lx == 0 && ly == 0) { lx = 128; ly = 128; }  // unmapped analog = centered
+	in.leftX = (int8_t)(lx - 128);
+	in.leftY = (int8_t)(128 - ly);  // driver: positive = up (sceCtrl convention)
+
+	pspdrv_run_frame(in);
+
+	int w, h;
+	const uint32_t *video = pspdrv_video(&w, &h);
+	memcpy(g_video, video, sizeof g_video);
+
+	int frames;
+	const int16_t *audio = pspdrv_audio(&frames);
+	if (frames > 8192)
+		frames = 8192;
+	g_audioFrames = frames;
+	memcpy(g_audio, audio, (size_t)frames * 2 * sizeof(int16_t));
+}
+
+ECL_EXPORT uint32_t *GetVideoBgra(void) { return g_video; }
+ECL_EXPORT int16_t *GetAudio(void) { return g_audio; }
+ECL_EXPORT int GetAudioSampleCount(void) { return g_audioFrames; }
+
+// The PSP's exact refresh rate: 60 * (1.001)^-1... actually 59.9400599...Hz,
+// which is 60000000/1001001 exactly (pixel clock derived).
+ECL_EXPORT int GetVsyncNumerator(void) { return 60000000; }
+ECL_EXPORT int GetVsyncDenominator(void) { return 1001001; }
+
+ECL_EXPORT int InputWasRead(void) { return pspdrv_input_was_read() ? 1 : 0; }
+
+// ---- memory domains ----
+// Domains resolve lazily through the PSP memory map (base + masked offset).
+
+struct DomainDesc {
+	const char *name;
+	uint32_t addr;
+	uint32_t size;
+	int writable;
+};
+
+static DomainDesc domainDesc(int i)
+{
+	switch (i) {
+	case 0: return { "RAM", 0x08000000, Memory::g_MemorySize, 1 };
+	case 1: return { "VRAM", 0x04000000, 0x00200000, 1 };
+	case 2: return { "Scratchpad", 0x00010000, 0x00004000, 1 };
+	default: return { nullptr, 0, 0, 0 };
+	}
+}
+
+ECL_EXPORT int GetMemoryDomainCount(void) { return 3; }
+ECL_EXPORT const char *GetMemoryDomainName(int i) { return domainDesc(i).name; }
+ECL_EXPORT uint8_t *GetMemoryDomainPtr(int i)
+{
+	DomainDesc d = domainDesc(i);
+	if (!d.name || !Memory::base)
+		return nullptr;
+	return Memory::GetPointerWriteUnchecked(d.addr);
+}
+ECL_EXPORT int64_t GetMemoryDomainSize(int i) { return domainDesc(i).size; }
+ECL_EXPORT int GetMemoryDomainWritable(int i) { return domainDesc(i).writable; }
+
+}  // extern "C"

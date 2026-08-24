@@ -167,6 +167,10 @@ static void PinCpuInfo(int threads) {
 #endif
 }
 
+#ifdef CHIMERA_GUEST
+extern "C" unsigned __default_stacksize;  // musl internal, one static link away
+#endif
+
 // ---------------------------------------------------------------------------
 // Boot / shutdown
 // ---------------------------------------------------------------------------
@@ -184,6 +188,13 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	}
 	if (cfg.verboseLog)
 		g_logManager.EnableOutput(LogOutput::Printf);
+
+#ifdef CHIMERA_GUEST
+	// musl's default THREAD stack is 128KB and the empty-auxv sandbox keeps it
+	// from reading PT_GNU_STACK; PPSSPP's threads assume glibc-sized stacks.
+	// One static link, so we can just set libc's internal default.
+	__default_stacksize = 8u << 20;
+#endif
 
 	PinCpuInfo(cfg.threads);
 	g_threadManager.Init(cfg.threads, cfg.threads);

@@ -1,3 +1,20 @@
+diff --git a/Common/ExceptionHandlerSetup.cpp b/Common/ExceptionHandlerSetup.cpp
+index f1b9778885..07ce960f9d 100644
+--- a/Common/ExceptionHandlerSetup.cpp
++++ b/Common/ExceptionHandlerSetup.cpp
+@@ -284,6 +284,12 @@ void InstallExceptionHandler(BadAccessHandler badAccessHandler) {
+ 	if (!badAccessHandler) {
+ 		return;
+ 	}
++#ifdef CHIMERA_WATERBOX
++	// Signals belong to the sandbox host (dirty-page tracking); the guest must
++	// never install its own. Fastmem is off (masked memory), so nothing needs
++	// the bad-access handler anyway.
++	return;
++#endif
+ 	if (g_badAccessHandler) {
+ 		g_badAccessHandler = badAccessHandler;
+ 		return;
 diff --git a/Common/GPU/Shader.cpp b/Common/GPU/Shader.cpp
 index 2fe810bb73..9f5b030f20 100644
 --- a/Common/GPU/Shader.cpp
@@ -46,6 +63,69 @@ index a413f4eaf2..08ab79d91d 100644
      return static_cast<u8*>(base);
  #else
  	size_t size = 0x10000000;
+diff --git a/Common/MemoryUtil.cpp b/Common/MemoryUtil.cpp
+index be2a14ddbe..574f0914ab 100644
+--- a/Common/MemoryUtil.cpp
++++ b/Common/MemoryUtil.cpp
+@@ -189,6 +189,11 @@ void *AllocateExecutableMemory(size_t size) {
+ 	if (PlatformIsWXExclusive())
+ 		prot = PROT_READ | PROT_WRITE;  // POST_EXEC is added later in this case.
+ 
++#ifdef CHIMERA_WATERBOX
++	// A nonzero address means MAP_FIXED to the sandbox, and the hint arithmetic
++	// lands outside the guest block. Let the arena place it.
++	map_hint = nullptr;
++#endif
+ 	void* ptr = mmap(map_hint, size, prot, MAP_ANON | MAP_PRIVATE, -1, 0);
+ 
+ 	if (ptr == MAP_FAILED) {
+diff --git a/Common/Profiler/Profiler.cpp b/Common/Profiler/Profiler.cpp
+index 0b41fa9c3a..4a8436a9df 100644
+--- a/Common/Profiler/Profiler.cpp
++++ b/Common/Profiler/Profiler.cpp
+@@ -55,6 +55,14 @@ static int threadIdAfterLast = 0;
+ static std::mutex threadsLock;
+ static CategoryFrame *history;
+ #if MAX_THREADS > 1
++// CHIMERA_GUEST: direct TLS would compile to %fs-relative access, which
++// inside the miniBox sandbox points at HOST TLS (see chimera-core-ppsspp).
++// Green threads run one at a time, and these are keyed caches / cosmetic
++// state, so plain statics are safe.
++#ifdef CHIMERA_GUEST
++#define thread_local
++#endif
++
+ thread_local int profilerThreadId = -1;
+ #else
+ static int profilerThreadId = 0;
+diff --git a/Common/Thread/ThreadUtil.cpp b/Common/Thread/ThreadUtil.cpp
+index e842a03124..b973b00964 100644
+--- a/Common/Thread/ThreadUtil.cpp
++++ b/Common/Thread/ThreadUtil.cpp
+@@ -67,6 +67,14 @@ void RegisterAttachDetach(AttachDetachFunc attach, AttachDetachFunc detach) {
+ #endif
+ 
+ #ifdef TLS_SUPPORTED
++// CHIMERA_GUEST: direct TLS would compile to %fs-relative access, which
++// inside the miniBox sandbox points at HOST TLS (see chimera-core-ppsspp).
++// Green threads run one at a time, and these are keyed caches / cosmetic
++// state, so plain statics are safe.
++#ifdef CHIMERA_GUEST
++#define thread_local
++#endif
++
+ static thread_local const char *curThreadName;
+ #endif
+ 
+@@ -139,6 +147,8 @@ void SetCurrentThreadName(const char *threadName) {
+ 	wchar_t buffer[256];
+ 	ConvertUTF8ToWString(buffer, ARRAY_SIZE(buffer), threadName);
+ 	SetThreadDescription(GetCurrentThread(), buffer);
++#elif defined(CHIMERA_WATERBOX)
++	// no prctl in the miniBox syscall surface; the TLS name below still works
+ #elif PPSSPP_PLATFORM(ANDROID) || PPSSPP_PLATFORM(LINUX)
+ 	pthread_setname_np(pthread_self(), threadName);
+ #elif defined(__APPLE__)
 diff --git a/Core/Debugger/SymbolMap.cpp b/Core/Debugger/SymbolMap.cpp
 index 9f4b115cd5..8ed3c98c2e 100644
 --- a/Core/Debugger/SymbolMap.cpp
@@ -76,6 +156,141 @@ index 9f4b115cd5..8ed3c98c2e 100644
  
  #if defined(_WIN32) && !PPSSPP_PLATFORM(UWP)
  
+diff --git a/Core/FileLoaders/LocalFileLoader.cpp b/Core/FileLoaders/LocalFileLoader.cpp
+index 6de92dabd6..d115610097 100644
+--- a/Core/FileLoaders/LocalFileLoader.cpp
++++ b/Core/FileLoaders/LocalFileLoader.cpp
+@@ -24,6 +24,7 @@
+ #include "Core/Util/DarwinFileSystemServices.h"
+ #include "Core/FileLoaders/LocalFileLoader.h"
+ 
++
+ #if PPSSPP_PLATFORM(ANDROID)
+ #include "android/jni/app-android.h"
+ #endif
+@@ -35,6 +36,14 @@
+ #endif
+ #else
+ #include <fcntl.h>
++
++#ifdef CHIMERA_WATERBOX
++// musl emulates O_CLOEXEC with an fcntl the miniBox syscall surface rejects,
++// and nothing ever execs in the sandbox anyway.
++#undef O_CLOEXEC
++#define O_CLOEXEC 0
++#endif
++
+ #endif
+ 
+ #ifdef HAVE_LIBRETRO_VFS
+@@ -194,8 +203,8 @@ size_t LocalFileLoader::ReadAt(s64 absolutePos, size_t bytes, size_t count, void
+ 	std::lock_guard<std::mutex> guard(readLock_);
+ 	File::Fseek(file_, absolutePos, SEEK_SET);
+ 	return fread(data, bytes, count, file_);
+-#elif PPSSPP_PLATFORM(SWITCH)
+-	// Toolchain has no fancy IO API.  We must lock.
++#elif PPSSPP_PLATFORM(SWITCH) || defined(CHIMERA_WATERBOX)
++	// No pread in the miniBox syscall surface; plain lseek+read under a lock.
+ 	std::lock_guard<std::mutex> guard(readLock_);
+ 	lseek(fd_, absolutePos, SEEK_SET);
+ 	return read(fd_, data, bytes * count) / bytes;
+diff --git a/Core/HLE/sceUsbCam.cpp b/Core/HLE/sceUsbCam.cpp
+index 5a72f3c467..bb55356bdc 100644
+--- a/Core/HLE/sceUsbCam.cpp
++++ b/Core/HLE/sceUsbCam.cpp
+@@ -338,7 +338,7 @@ std::vector<std::string> Camera::getDeviceList() {
+ 	return __mac_getDeviceList();
+ 	#elif defined(USING_QT_UI) // Qt:macOS / Qt:Linux
+ 		return __qt_getDeviceList();
+-	#elif PPSSPP_PLATFORM(LINUX) // SDL:Linux
++	#elif PPSSPP_PLATFORM(LINUX) && !defined(CHIMERA_WATERBOX) // SDL:Linux
+ 		return __v4l_getDeviceList();
+ 	#endif
+ 	return std::vector<std::string>();
+@@ -365,7 +365,7 @@ int Camera::startCapture() {
+ 		System_CameraCommand(command);
+ #elif PPSSPP_PLATFORM(MAC)
+ 	__mac_startCapture(width, height);
+-	#elif PPSSPP_PLATFORM(LINUX)
++	#elif PPSSPP_PLATFORM(LINUX) && !defined(CHIMERA_WATERBOX)
+ 		__v4l_startCapture(width, height);
+ 	#else
+ 		ERROR_LOG(Log::HLE, "%s not implemented", __FUNCTION__);
+@@ -383,7 +383,7 @@ int Camera::stopCapture() {
+ 		System_CameraCommand("stopVideo");
+ #elif PPSSPP_PLATFORM(MAC)
+ 		__mac_stopCapture();
+-	#elif PPSSPP_PLATFORM(LINUX)
++	#elif PPSSPP_PLATFORM(LINUX) && !defined(CHIMERA_WATERBOX)
+ 		__v4l_stopCapture();
+ 	#else
+ 		ERROR_LOG(Log::HLE, "%s not implemented", __FUNCTION__);
+diff --git a/Core/HW/Camera.cpp b/Core/HW/Camera.cpp
+index 8d7765525c..35d80d54ac 100644
+--- a/Core/HW/Camera.cpp
++++ b/Core/HW/Camera.cpp
+@@ -202,7 +202,7 @@ int __qt_stopCapture() {
+ }
+ 
+ //endif defined(USING_QT_UI)
+-#elif PPSSPP_PLATFORM(LINUX) && !PPSSPP_PLATFORM(ANDROID)
++#elif PPSSPP_PLATFORM(LINUX) && !PPSSPP_PLATFORM(ANDROID) && !defined(CHIMERA_WATERBOX)
+ 
+ std::vector<std::string> __v4l_getDeviceList() {
+ 	std::vector<std::string> deviceList;
+diff --git a/Core/HW/Camera.h b/Core/HW/Camera.h
+index cafcbac783..e75f7554fc 100644
+--- a/Core/HW/Camera.h
++++ b/Core/HW/Camera.h
+@@ -56,7 +56,7 @@ std::vector<std::string> __mac_getDeviceList();
+ int __mac_startCapture(int width, int height);
+ int __mac_stopCapture();
+ 
+-#elif PPSSPP_PLATFORM(LINUX) && !PPSSPP_PLATFORM(ANDROID)
++#elif PPSSPP_PLATFORM(LINUX) && !PPSSPP_PLATFORM(ANDROID) && !defined(CHIMERA_WATERBOX)
+ #include <fcntl.h>
+ #include <linux/videodev2.h>
+ #include <sys/ioctl.h>
+diff --git a/Core/LuaContext.cpp b/Core/LuaContext.cpp
+index 7738d328b8..4b0aa2c528 100644
+--- a/Core/LuaContext.cpp
++++ b/Core/LuaContext.cpp
+@@ -6,7 +6,16 @@
+ #include "Core/MemMap.h"
+ 
+ // Sol is expensive to include so we only do it here.
++// CHIMERA_GUEST: sol.hpp has one function-local thread_local; direct TLS is
++// forbidden in the sandbox (fs points at host TLS) and one green thread runs
++// at a time, so a plain static is equivalent.
++#ifdef CHIMERA_GUEST
++#define thread_local
++#endif
+ #include "ext/sol/sol.hpp"
++#ifdef CHIMERA_GUEST
++#undef thread_local
++#endif
+ 
+ LuaContext g_lua;
+ 
+diff --git a/Core/PSPLoaders.cpp b/Core/PSPLoaders.cpp
+index d2ac9bdcde..f5c21a4ad8 100644
+--- a/Core/PSPLoaders.cpp
++++ b/Core/PSPLoaders.cpp
+@@ -407,7 +407,14 @@ bool Load_PSP_ELF_PBP(FileLoader *fileLoader, std::string_view discId, std::stri
+ 		dir = full_path.NavigateUp();
+ 	}
+ 
++#ifdef CHIMERA_WATERBOX
++	// The sandbox has one flat, read-only namespace and its VFS allows one
++	// open per file - and the boot file is already open through fileLoader.
++	// Serve umd0:/<file> from that instead of re-opening a host directory.
++	auto fs = std::make_shared<BlobFileSystem>(&pspFileSystem, fileLoader, file);
++#else
+ 	auto fs = std::make_shared<DirectoryFileSystem>(&pspFileSystem, dir, FileSystemFlags::SIMULATE_FAT32 | FileSystemFlags::CARD);
++#endif
+ 	pspFileSystem.Mount("umd0:", fs);
+ 
+ 	std::string finalName = ms_path + file;
 diff --git a/Core/Util/PortManager.h b/Core/Util/PortManager.h
 index b42e3f9e08..6ffc8ead5f 100644
 --- a/Core/Util/PortManager.h
@@ -141,3 +356,41 @@ index ac0c39ba64..8b79b840ad 100644
  #endif
  	default:
  		return nullptr;
+diff --git a/GPU/Software/DrawPixel.h b/GPU/Software/DrawPixel.h
+index f6f6ec0be1..d2eed14314 100644
+--- a/GPU/Software/DrawPixel.h
++++ b/GPU/Software/DrawPixel.h
+@@ -60,6 +60,14 @@ struct PixelBlendState {
+ };
+ void ComputePixelBlendState(PixelBlendState &state, const PixelFuncID &id);
+ 
++// CHIMERA_GUEST: direct TLS would compile to %fs-relative access, which
++// inside the miniBox sandbox points at HOST TLS (see chimera-core-ppsspp).
++// Green threads run one at a time, and these are keyed caches / cosmetic
++// state, so plain statics are safe.
++#ifdef CHIMERA_GUEST
++#define thread_local
++#endif
++
+ class PixelJitCache : public Rasterizer::CodeBlock {
+ public:
+ 	PixelJitCache();
+diff --git a/GPU/Software/Sampler.h b/GPU/Software/Sampler.h
+index a07ce52a39..5a41c2b1a9 100644
+--- a/GPU/Software/Sampler.h
++++ b/GPU/Software/Sampler.h
+@@ -52,6 +52,14 @@ void Shutdown();
+ 
+ bool DescribeCodePtr(const u8 *ptr, std::string &name);
+ 
++// CHIMERA_GUEST: direct TLS would compile to %fs-relative access, which
++// inside the miniBox sandbox points at HOST TLS (see chimera-core-ppsspp).
++// Green threads run one at a time, and these are keyed caches / cosmetic
++// state, so plain statics are safe.
++#ifdef CHIMERA_GUEST
++#define thread_local
++#endif
++
+ class SamplerJitCache : public Rasterizer::CodeBlock {
+ public:
+ 	SamplerJitCache();

@@ -1,0 +1,41 @@
+
+=== miniBox: unimplemented syscall (2026-08-24 20:34:38) ===
+miniBox: unimplemented syscall 157 (f, 36f011b6ac1, 0)
+  the guest asked the host for something it does not provide; it cannot continue.
+
+=== miniBox: unimplemented syscall (2026-08-24 20:35:16) ===
+miniBox: unimplemented syscall 72 (3, 2, 1)
+  the guest asked the host for something it does not provide; it cannot continue.
+
+=== miniBox: unimplemented syscall (2026-08-24 20:36:01) ===
+miniBox: unimplemented syscall 72 (3, 2, 1)
+  the guest asked the host for something it does not provide; it cannot continue.
+
+=== miniBox: unimplemented syscall (2026-08-24 20:52:06) ===
+miniBox: unimplemented syscall 83 (36f170c5170, 1ed, 36f0090d745)
+  the guest asked the host for something it does not provide; it cannot continue.
+
+=== miniBox: unimplemented syscall (2026-08-24 20:54:05) ===
+miniBox: unimplemented syscall 131 (36f170c56f0, 0, 36f0122c6d0)
+  the guest asked the host for something it does not provide; it cannot continue.
+
+=== miniBox: unhandled fault (2026-08-24 20:54:33) ===
+[tripguard] unhandled fault: addr=0x5bb10000000f write rip=0x35f0000008a, OUTSIDE every registered block [1 block(s) registered]
+
+=== miniBox: unhandled fault (2026-08-24 20:55:30) ===
+[tripguard] unhandled fault: addr=0x5c7a0000000f write rip=0x35f0000008a, OUTSIDE every registered block [1 block(s) registered]
+
+=== miniBox: unhandled fault (2026-08-24 20:56:44) ===
+[tripguard] unhandled fault: addr=0x5cc60000000f write rip=0x35f0000008a, OUTSIDE every registered block [1 block(s) registered]
+
+=== miniBox: unhandled fault (2026-08-24 20:58:35) ===
+[tripguard] unhandled fault: addr=0x55560000000f write rip=0x35f0000008a, OUTSIDE every registered block [1 block(s) registered]
+
+=== miniBox: unhandled fault (2026-08-24 20:58:43) ===
+[tripguard] unhandled fault: addr=0x55560000000f write rip=0x35f0000008a, OUTSIDE every registered block [1 block(s) registered]
+
+=== miniBox: unhandled fault (2026-08-24 20:59:08) ===
+[tripguard] unhandled fault: addr=0x55560000000f write rip=0x35f0000008a, OUTSIDE every registered block [1 block(s) registered]
+
+=== miniBox: unhandled fault (2026-08-24 21:01:04) ===
+[tripguard] unhandled fault: addr=0x101001008 read/exec rip=0x35f00000092, OUTSIDE every registered block [1 block(s) registered]
