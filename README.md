@@ -6,8 +6,14 @@ Chimera core (`core.wbx` + `waterbox.config`), the same shape as
 [chimera-core-quickernes](https://github.com/ToolAssisted-run/chimera-core-quickernes) and
 [chimera-core-neshawk](https://github.com/ToolAssisted-run/chimera-core-neshawk).
 
-Status: **bring-up**. See [`docs/PLAN.md`](docs/PLAN.md) for the architecture, the
-lessons inherited from the previous attempts, and the milestone list.
+Status: **working**. The sandboxed core boots PSP programs, runs deterministically
+(native build == sandbox == per-frame savestate round-trip == rewind, on every
+digest: video, audio, RAM, VRAM, scratchpad), passes the frontend gate inside
+Chimera itself, embeds its assets (vfpu tables, fonts, PPGe atlas), keeps
+savedata on an in-guest memory stick exported through the persistent-data
+channel, and packages as `build/Cores/ppsspp.zip`. Not yet: real-game (.iso/
+.pbp) validation, analog input surfaced by the frontend, sync settings, ffmpeg
+(video cutscenes), the x86 JIT. History and details: [`docs/PLAN.md`](docs/PLAN.md).
 
 ## Credits & provenance
 
