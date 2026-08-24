@@ -1,0 +1,131 @@
+# PPSSPP -> Chimera waterbox core: the plan
+
+Written 2026-08-24 at the start of the effort; update as milestones land. The goal is a
+working, deterministic, waterboxed PPSSPP core package. Software renderer only, IR
+interpreter first, and no unnecessary subsystems (no retro achievements, no networking
+backends, no UI, no shader translation).
+
+## What the previous attempts teach
+
+Three prior bodies of work exist (see README for links):
+
+1. **Native BizHawk port** (worked, with desyncs). Desyncs came from PPSSPP's own
+   savestate (`DoState`) machinery not capturing everything - threads, HLE internals,
+   timing. Lesson: do not use PPSSPP savestates at all. miniBox snapshots the whole
+   guest machine, so every byte of mutable emulator state must simply live in guest
+   memory; then savestates are exact by construction.
+2. **Waterbox attempt** (BizHawk's old waterbox, branch `ppsspp_wbx` + TASEmulators/ppsspp
+   branch `wbx`): built PPSSPP's libretro flavor inside the box; required a ~90-file,
+   +-4.8k-line patch series, the bulk of it **dethreading** (BizHawk's waterbox has no
+   guest threads), plus: omitting sleeps, memfile for I/O, removing mkdir, removing
+   GPU/gl deps, removing rcheevos. Died on an unsolved crash. Lessons:
+   - miniBox HAS deterministic green threads (futex-backed pthreads, cooperative,
+     one-at-a-time). Keep PPSSPP's threads; drop the dethreading patches entirely.
+     This removes the most invasive and crash-prone part of the old attempt.
+   - The old patch series (fetchable: TASEmulators/ppsspp branch `wbx`, series above
+     merge `ecbbadd604`) is the reference list of host-dependency landmines.
+3. **headlessPPSSPP**: a curated ~700-file source list that links outside CMake. Confirms
+   the "own build, no CMake" approach and is a starting superset for our list.
+
+## Architecture decisions
+
+- **Upstream pin**: `extern/ppsspp` = hrydgard/ppsspp @ v1.20.4 (2026-05-16), unmodified.
+  Local changes live in `patches/` (git apply at build time), kept as small as possible;
+  prefer solving problems in the adapter. If the series grows, move to a proper fork
+  under ToolAssisted-run.
+- **Driver, not libretro**: we embed PPSSPP the way `headless/Headless.cpp` does
+  (PSP_InitStart/PSP_InitUpdate + run loop until `CORE_NEXTFRAME`, the libretro
+  frame-stepping model), with our own minimal System_* stubs. The libretro layer adds
+  UI/GL surface area we do not want. With `--graphics=software` the upstream headless
+  host needs NO graphics context at all (`HeadlessHost` base class, null DrawContext).
+- **CPU**: `CPUCore::IR_INTERPRETER` to start (deterministic, no codegen). The x86-64
+  JIT runs on guest-native x86-64 and miniBox allows RWX pages, so enabling it later is
+  an option, but only after the interpreter gate is green.
+- **GPU**: `GPUCORE_SOFTWARE`. Note softgpu itself emits x86 at runtime (DrawPixelX86,
+  SamplerX86, RasterizerRegCache); if that misbehaves in the box there are C fallbacks.
+- **One curated source list** (`waterbox/sources.list`), compiled twice: natively
+  (reference + debugging) and for the guest (musl toolchain, `-mcmodel=large -fno-pic`).
+  Same sources, same defines; the native flavor is the equivalence-gate reference,
+  exactly the QuickerNesHawk pattern.
+
+## The machine mapping (miniBox spec -> PPSSPP)
+
+- **ISO/ROM**: mounted host-side via `wbx_mount_file` (read-only, hash-bound to
+  savestates), read lazily by the guest through VFS open/lseek/read. NEVER slurped into
+  guest memory (UMDs are up to ~1.8 GiB). PPSSPP side: a custom `FileLoader` doing
+  lseek+read (no pread in the miniBox syscall surface).
+- **Assets/flash0** (PPGe atlas, font files): packed into one mounted blob; a custom
+  `VFSBackend` (PPSSPP `g_VFS`) serves it. `flash0:` goes through `VFSFileSystem`,
+  which reads via g_VFS, so one backend covers both. No opendir/getdents in the box, so
+  upstream `DirectoryReader` cannot be used.
+- **Memory stick** (savedata, PSP/SYSTEM): must be guest-memory-resident (writable
+  mounted files block savestates). Implement an in-memory `IFileSystem`
+  (std::map-backed tree) registered in place of `DirectoryFileSystem`. It is savestated
+  automatically because it lives in guest RAM. Persistent-data ABI ships it out as the
+  core's persistent payload (bundle: "memstick").
+- **Time**: the box clock is a CONSTANT (`clock_gettime` = 1495889068.0s always);
+  `nanosleep`/`clock_nanosleep` are yields. Anything in PPSSPP that waits for real time
+  to advance will spin/hang. CoreTiming is virtual (safe). Patch `time_now_d()` and
+  friends to derive from CoreTiming cycles so "real time" advances deterministically
+  with emulation - this also kills a whole class of desyncs. (The old attempt's
+  "Omitting sleep" commit is the crude version of this.)
+- **Threads**: keep. miniBox green threads are deterministic; the danger is a busy-wait
+  that never issues a syscall (never yields -> livelock). Audit spin loops
+  (`std::atomic` polling); PPSSPP mostly blocks on condvars (futex - fine).
+  ThreadManager worker count: fix at a small constant (never `cpu_info.num_cores` -
+  thread count and scheduling order must not depend on the host machine).
+- **No exceptions to determinism**: no getrandom (trap), sockets trap at runtime (net
+  HLE modules still compile and register; a game that calls them gets failures, which
+  is fine and matches "no network" semantics).
+- **Memory layout**: PSP RAM is 32MiB + 2MiB VRAM + ~4MiB scratch, but PPSSPP's own
+  heap (softgpu bins, IR blocks, kernel objects, STL) is the big consumer. Start
+  generous (sbrk 512MiB, mmap 1024MiB, plain 64MiB, sealed 32MiB, invis 64MiB), then
+  measure and shrink (savestate cost scales with the declared layout).
+
+## Frame loop (adapter)
+
+- Input: HLE-level injection like libretro (`__CtrlUpdateButtons`, `__CtrlSetAnalogXY`).
+  Lag detection: instrument sceCtrl's read/peek entry points.
+- Video: after `CORE_NEXTFRAME`, read the current display framebuffer (sceDisplay's
+  fb pointer/stride/format) out of VRAM, convert to BGRA 480x272.
+- Audio: pull a fixed 44100Hz stereo block per frame from `__AudioMix`
+  (host-side pull does not feed back into emulation).
+- Vsync: 60000000/1001001 (the PSP's exact 59.9400...Hz), constant.
+
+## Milestones
+
+- [x] M0 survey: miniBox spec, prior attempts, upstream headless path. (2026-08-24)
+- [ ] M1 skeleton: repo layout, submodule pinned, plan committed.
+- [ ] M2a native compile: curated source list compiles natively with our defines.
+- [ ] M2b native run: our driver boots a pspautotests .prx with softgpu + IR
+      interpreter, output matches the test's .expected. Then a homebrew EBOOT.PBP.
+- [ ] M3 guest link: same list + adapter builds as core.wbx (musl, mcmodel=large),
+      Init succeeds in the sandbox.
+- [ ] M4 gate: native-vs-guest equivalence over frames + per-frame savestate
+      round-trip (run-gate.sh, QuickerNesHawk pattern).
+- [ ] M5 package: waterbox.config surface (settings, firmware=PSP fonts?, keybinds),
+      build-package.sh, frontend gate in Chimera.
+- [ ] M6 the long tail: memstick persistence, analog controls in the frontend,
+      performance (JIT?), more of pspautotests green.
+
+## Test content (no copyrighted ROMs)
+
+- pspautotests (upstream submodule; the `-g` "tests_good" set, ~314 tests, runs under
+  the software renderer on CI upstream).
+- Homebrew EBOOT.PBPs for full-game frames (e.g. free homebrew demos), for the gate's
+  video/audio digests.
+
+## Known open questions
+
+- Does `PSP_InitStart`'s boot pipeline touch host paths we must fake (config dir,
+  memstick dir) before our filesystems are registered? (Headless forces
+  `g_Config.memStickDirectory`; we redirect at IFileSystem level.)
+- ffmpeg: NOT used (at3_standalone decodes Atrac3+; video (Mpeg/H.264 in games' PMFs)
+  needs ffmpeg upstream - out of scope initially; sceMpeg without ffmpeg stubs out,
+  some games' cutscenes will be black/skipped. Revisit later (upstream's own
+  ffmpeg fork builds statically; it is big but self-contained).
+- zstd/snappy/zlib: zlib is required (many paths); zstd required by Serializer &
+  ReplacedTexture includes even if we never save PPSSPP states - keep, it is small.
+- The old unsolved crash: unknown root cause, was in the dethreaded libretro build on
+  BizHawk's waterbox. Not carried forward as a known issue; the architecture that
+  produced it (dethreading + libretro + old waterbox) is gone.

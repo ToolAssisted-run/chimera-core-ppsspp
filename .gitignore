@@ -1,0 +1,5 @@
+waterbox/bin/
+waterbox/obj/
+*.o
+*.wbx
+build/
