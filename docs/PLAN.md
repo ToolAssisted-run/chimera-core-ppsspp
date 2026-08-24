@@ -126,8 +126,11 @@ Three prior bodies of work exist (see README for links):
             case-insensitive FAT-ish tree; savedata makedata/autosave/filelist
             pass and GATE green at 900 frames (savedata written in guest
             memory, captured by machine savestates). (2026-08-24)
-      - [ ] persistent-data ABI: export/import the memstick tree as the
-            package's persistent payload (bundle "memstick").
+      - [x] persistent-data ABI: GetPersistent*/PutPersistent export/import
+            the memstick tree ("ChimMS01" flat stream, sorted, deterministic;
+            id "memstick", label "Memory Stick"). The card store is
+            process-global like a physical stick (survives PSP_Shutdown).
+            Round-trips byte-identically through the sandbox. (2026-08-24)
       - [ ] real game content (.iso/.pbp) - none on this machine; needs the
             user's files. ISO path (ISOFileSystem over one FileLoader) is
             architecturally exercised but untested with a real image.

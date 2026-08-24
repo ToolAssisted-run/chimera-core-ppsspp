@@ -72,6 +72,7 @@ std::string ParentOf(const std::string &norm) {
 
 struct Node {
 	std::string displayName;  // last path component as first created
+	std::string displayPath;  // full normalized path, original case
 	bool isDirectory = false;
 	std::vector<u8> data;
 };
@@ -82,13 +83,21 @@ struct OpenEntry {
 	s64 pos = 0;
 };
 
+// The card itself: like a physical memory stick, its contents survive the
+// machine being switched off (PSP_Shutdown destroys the filesystem OBJECT,
+// e.g. when a test finishes or the frontend reboots the core for a sync
+// setting; the data must not go with it).
+std::map<std::string, Node> g_nodes;
+
 class RamFileSystem : public IFileSystem {
 public:
-	explicit RamFileSystem(IHandleAllocator *hAlloc) : hAlloc_(hAlloc) {
-		MkNode("/", "", true);
-		// The standard tree the frontend-side CreateSysDirectories would make.
-		for (const char *d : { "/PSP", "/PSP/GAME", "/PSP/SAVEDATA", "/PSP/SYSTEM" })
-			MkNode(d, d, true);
+	explicit RamFileSystem(IHandleAllocator *hAlloc) : hAlloc_(hAlloc), nodes_(g_nodes) {
+		if (!nodes_.count("/")) {
+			MkNode("/", "", true);
+			// The standard tree the frontend-side CreateSysDirectories would make.
+			for (const char *d : { "/PSP", "/PSP/GAME", "/PSP/SAVEDATA", "/PSP/SYSTEM" })
+				MkNode(d, d, true);
+		}
 	}
 
 	void DoState(PointerWrap &p) override {
@@ -279,6 +288,7 @@ public:
 				if (kv->first == fromKey || kv->first.compare(0, prefix.size(), prefix) == 0) {
 					std::string nk = toKey + kv->first.substr(fromKey.size());
 					Node n = kv->second;
+					n.displayPath = Normalize(toNorm) + kv->first.substr(fromKey.size());
 					if (kv->first == fromKey)
 						n.displayName = toNorm.substr(toNorm.rfind('/') + 1);
 					moved[nk] = std::move(n);
@@ -292,6 +302,7 @@ public:
 		} else {
 			Node n = std::move(it->second);
 			n.displayName = toNorm.substr(toNorm.rfind('/') + 1);
+			n.displayPath = Normalize(toNorm);
 			nodes_.erase(it);
 			nodes_[toKey] = std::move(n);
 		}
@@ -346,6 +357,7 @@ private:
 		Node n;
 		size_t slash = display.rfind('/');
 		n.displayName = slash == std::string::npos ? display : display.substr(slash + 1);
+		n.displayPath = norm;
 		n.isDirectory = dir;
 		nodes_[UpperKey(norm)] = std::move(n);
 	}
@@ -364,12 +376,112 @@ private:
 	}
 
 	IHandleAllocator *hAlloc_;
-	std::map<std::string, Node> nodes_;
 	std::map<u32, OpenEntry> open_;
+	std::map<std::string, Node> &nodes_;
 };
+
+bool IsStandardDir(const std::string &key) {
+	return key == "/" || key == "/PSP" || key == "/PSP/GAME" || key == "/PSP/SAVEDATA" || key == "/PSP/SYSTEM";
+}
+
+void put32(std::vector<unsigned char> &v, uint32_t x) {
+	v.push_back(x & 0xff); v.push_back((x >> 8) & 0xff);
+	v.push_back((x >> 16) & 0xff); v.push_back((x >> 24) & 0xff);
+}
+
+std::vector<unsigned char> SerializeTree() {
+	std::vector<unsigned char> v;
+	// anything beyond the pristine tree?
+	bool any = false;
+	for (auto &kv : g_nodes)
+		if (!IsStandardDir(kv.first)) { any = true; break; }
+	if (!any)
+		return v;
+	const char magic[8] = { 'C','h','i','m','M','S','0','1' };
+	v.insert(v.end(), magic, magic + 8);
+	uint32_t count = 0;
+	for (auto &kv : g_nodes)
+		if (!IsStandardDir(kv.first))
+			count++;
+	put32(v, count);
+	for (auto &kv : g_nodes) {   // std::map: sorted, deterministic
+		if (IsStandardDir(kv.first))
+			continue;
+		const Node &n = kv.second;
+		put32(v, (uint32_t)n.displayPath.size());
+		v.insert(v.end(), n.displayPath.begin(), n.displayPath.end());
+		v.push_back(n.isDirectory ? 1 : 0);
+		put32(v, (uint32_t)n.data.size());
+		v.insert(v.end(), n.data.begin(), n.data.end());
+	}
+	return v;
+}
 
 }  // namespace
 
 std::shared_ptr<IFileSystem> Chimera_CreateRamMemstick(IHandleAllocator *hAlloc) {
 	return std::make_shared<RamFileSystem>(hAlloc);
+}
+
+size_t Chimera_MemstickSerializeSize() {
+	return SerializeTree().size();
+}
+
+size_t Chimera_MemstickSerialize(unsigned char *out, size_t cap) {
+	std::vector<unsigned char> v = SerializeTree();
+	if (v.size() > cap)
+		return 0;
+	memcpy(out, v.data(), v.size());
+	return v.size();
+}
+
+bool Chimera_MemstickDeserialize(const unsigned char *in, size_t len) {
+	if (len < 12 || memcmp(in, "ChimMS01", 8) != 0)
+		return false;
+	auto rd32 = [&](size_t &p) -> uint32_t {
+		uint32_t x = in[p] | (in[p+1] << 8) | (in[p+2] << 16) | ((uint32_t)in[p+3] << 24);
+		p += 4;
+		return x;
+	};
+	size_t p = 8;
+	uint32_t count = rd32(p);
+	// build into a fresh tree so a truncated stream applies nothing
+	std::map<std::string, Node> tree;
+	for (uint32_t i = 0; i < count; i++) {
+		if (p + 4 > len) return false;
+		uint32_t plen = rd32(p);
+		if (p + plen + 1 + 4 > len) return false;
+		std::string path((const char *)in + p, plen);
+		p += plen;
+		bool dir = in[p++] != 0;
+		uint32_t dlen = rd32(p);
+		if (p + dlen > len) return false;
+		Node n;
+		std::string norm = Normalize(path);
+		size_t slash = norm.rfind('/');
+		n.displayName = norm.substr(slash + 1);
+		n.displayPath = norm;
+		n.isDirectory = dir;
+		if (!dir)
+			n.data.assign(in + p, in + p + dlen);
+		p += dlen;
+		tree[UpperKey(norm)] = std::move(n);
+		// implicit parents (standard dirs already exist; deeper ones come from
+		// their own entries, but be safe)
+		for (std::string parent = ParentOf(norm); parent != "/"; parent = ParentOf(parent)) {
+			std::string pk = UpperKey(parent);
+			if (!IsStandardDir(pk) && !tree.count(pk) && !g_nodes.count(pk)) {
+				Node d;
+				d.displayName = parent.substr(parent.rfind('/') + 1);
+				d.displayPath = parent;
+				d.isDirectory = true;
+				tree[pk] = std::move(d);
+			}
+		}
+	}
+	if (p != len)
+		return false;
+	for (auto &kv : tree)
+		g_nodes[kv.first] = std::move(kv.second);
+	return true;
 }

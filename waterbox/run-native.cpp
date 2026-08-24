@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "psp-driver.h"
+#include "ram-filesystem.h"
 
 static uint64_t fnv1a(const void *data, size_t len, uint64_t h = 1469598103934665603ULL) {
 	const uint8_t *p = (const uint8_t *)data;

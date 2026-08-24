@@ -156,21 +156,12 @@ E ISO looks bogus, expected CD001 signature not present? Giving up...
 I ELF, using full PSP-2000 memory access
 I Unidentified PSP title
 W No DiscID found - generating a fake one: 'ROMH00334' (from rom)
-I Memory system initialized. Base at 0x36f17f93020 (RAM at @ 0x36f01b40710, uncached @ 0x36f01b406f0)
+I Memory system initialized. Base at 0x36f17fa1020 (RAM at @ 0x36f01b4e710, uncached @ 0x36f01b4e6f0)
 I File is an ELF or loose PBP rom
 N rom
 D No game-specific settings found in /ROMH00334_ppsspp.ini. Using global defaults.
 I Initializing kernel...
 I Kernel and user memory pools initialized
-E CreateFullPath(): Not yet supported
-I CreateEmptyFile: /wJpCzSBNnZfxSgoS
-E CreateEmptyFile: failed to create '/wJpCzSBNnZfxSgoS': Unknown error
-W Delete: '/wJpCzSBNnZfxSgoS' already does not exist
-I Is file system case sensitive? no (base: '') (checkOK: 0)
-D CreateDir('/PSP')
-E CreateDir: mkdir failed on /PSP: Read-only file system
-D CreateDir('/PSP/SAVEDATA')
-E CreateDir: mkdir failed on /PSP/SAVEDATA: Read-only file system
 I LocalHost IP will be 127.0.0.0 [12:34:56:78:9a:bc]
 D CreateDir('/PSP')
 E CreateDir: mkdir failed on /PSP: Read-only file system
