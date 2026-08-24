@@ -28,7 +28,17 @@ CXXFLAGS := $(CFLAGS) -std=c++20 -fexceptions $(CXXINCS)
 
 all: objs
 
-objs: $(OBJS) $(O)/libchdr.a $(O)/lib7zip.a $(O)/drv/psp-driver.o $(O)/drv/waterbox.o $(O)/gstubs/guest-syscalls.o
+objs: $(OBJS) $(O)/libchdr.a $(O)/lib7zip.a $(O)/drv/psp-driver.o $(O)/drv/waterbox.o $(O)/gstubs/guest-syscalls.o $(O)/drv/memory-assets.o $(O)/assets.o
+
+$(O)/assets.s $(O)/assets-table.inc: build-assets.py
+	python3 build-assets.py --embed $(PP)/assets $(O)
+
+$(O)/assets.o: $(O)/assets.s
+	gcc -c -o $@ $<
+
+$(O)/drv/memory-assets.o: memory-assets.cpp memory-assets.h $(O)/assets-table.inc
+	@mkdir -p $(dir $@)
+	g++ $(SPECS) $(CXXFLAGS) -c -o $@ $<
 
 $(O)/gstubs/%.o: guest-stubs/%.cpp
 	@mkdir -p $(dir $@)

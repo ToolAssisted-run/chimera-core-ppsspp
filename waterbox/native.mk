@@ -55,7 +55,17 @@ clean:
 .PHONY: all objs list clean
 
 # ---- link the native reference driver --------------------------------------
-DRIVER_OBJS := $(O)/drv/psp-driver.o $(O)/drv/run-native.o
+DRIVER_OBJS := $(O)/drv/psp-driver.o $(O)/drv/run-native.o $(O)/drv/memory-assets.o $(O)/assets.o
+
+$(O)/assets.s $(O)/assets-table.inc: build-assets.py
+	python3 build-assets.py --embed $(PP)/assets $(O)
+
+$(O)/assets.o: $(O)/assets.s
+	gcc -c -o $@ $<
+
+$(O)/drv/memory-assets.o: memory-assets.cpp memory-assets.h $(O)/assets-table.inc
+	@mkdir -p $(dir $@)
+	g++ $(CXXFLAGS) -c -o $@ $<
 
 $(O)/drv/%.o: %.cpp psp-driver.h
 	@mkdir -p $(dir $@)

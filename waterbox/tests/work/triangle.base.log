@@ -6,11 +6,11 @@ Using SDL2 for host input (keyboard + gamepads)
 [ALSOFT] (EE) Could not query RTKit: No such file or directory (2)
 Chimera Commit 1470e21d1
 I ThreadManager::Init(compute threads: 4, all: 8)
+D Registered VFS for prefix : MemoryAssets
 I Restored FirstRun from false to default true
 I Restored AutoRun from false to default true
 I Restored IgnoreBadMemAccess from false to default true
 I Restored CheckForNewVersion from false to default true
-E Missing filesystem for 'lang/.ini'
 I Restored Language from "" to default "en_US"
 I Restored EnablePlugins from false to default true
 I Restored CwCheatRefreshRate from 0 to default 77
@@ -156,9 +156,7 @@ E ISO looks bogus, expected CD001 signature not present? Giving up...
 I ELF, using full PSP-2000 memory access
 I Unidentified PSP title
 W No DiscID found - generating a fake one: 'ROMH00334' (from rom)
-E Missing filesystem for 'compat.ini'
-I OSD: File not found: compat.ini ()
-I Memory system initialized. Base at 0x36f170c6020 (RAM at @ 0x36f00c73710, uncached @ 0x36f00c736f0)
+I Memory system initialized. Base at 0x36f17f93020 (RAM at @ 0x36f01b40710, uncached @ 0x36f01b406f0)
 I File is an ELF or loose PBP rom
 N rom
 D No game-specific settings found in /ROMH00334_ppsspp.ini. Using global defaults.
@@ -178,7 +176,6 @@ D CreateDir('/PSP')
 E CreateDir: mkdir failed on /PSP: Read-only file system
 D CreateDir('/PSP/PPSSPP_STATE')
 E CreateDir: mkdir failed on /PSP/PPSSPP_STATE: Read-only file system
-E Missing filesystem for 'flash0/font/jpn0.pgf'
 I PPGe drawing library initialized. DL: 08000400 Data: 08010400 Atlas: 00000000 (0) Args: 08020400
 I Kernel initialized.
 D String section: 34

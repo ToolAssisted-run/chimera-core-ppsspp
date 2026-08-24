@@ -194,6 +194,30 @@ index 6de92dabd6..d115610097 100644
  	std::lock_guard<std::mutex> guard(readLock_);
  	lseek(fd_, absolutePos, SEEK_SET);
  	return read(fd_, data, bytes * count) / bytes;
+diff --git a/Core/HLE/sceRtc.cpp b/Core/HLE/sceRtc.cpp
+index 12a2c0adf0..83521b749e 100644
+--- a/Core/HLE/sceRtc.cpp
++++ b/Core/HLE/sceRtc.cpp
+@@ -147,10 +147,19 @@ void __RtcInit()
+ {
+ 	// This is the base time, the only case we use gettimeofday() for.
+ 	// Everything else is relative to that, "virtual time."
++#ifdef CHIMERA_WATERBOX
++	// Deterministic machine: the RTC base is a constant, the same one the
++	// sandbox clock reports (2017-05-27T12:44:28Z), so the emulated calendar
++	// is a pure function of emulation. TAS input can still vary it later via
++	// a sync setting.
++	rtcBaseTime.tv_sec = 1495889068;
++	rtcBaseTime.tv_usec = 0;
++#else
+ 	timeval tv;
+ 	gettimeofday(&tv, NULL);
+ 	rtcBaseTime.tv_sec = tv.tv_sec;
+ 	rtcBaseTime.tv_usec = 0;
++#endif
+ 	// Precalculate the current time in microseconds (rtcMagicOffset is offset to 1970.)
+ 	RtcUpdateBaseTicks();
+ }
 diff --git a/Core/HLE/sceUsbCam.cpp b/Core/HLE/sceUsbCam.cpp
 index 5a72f3c467..bb55356bdc 100644
 --- a/Core/HLE/sceUsbCam.cpp

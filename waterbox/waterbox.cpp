@@ -49,7 +49,7 @@ ECL_EXPORT int Init(void)
 
 	PspDrvConfig cfg;
 	cfg.bootPath = romName;
-	cfg.assetsDir = "";     // TODO(M4): assets blob VFS backend
+	cfg.assetsDir = "";     // empty = the assets compiled into this image
 	cfg.memstickDir = "";   // TODO(M4): RAM memory stick filesystem
 	cfg.cpuCore = 2;        // IR interpreter
 	cfg.threads = 2;

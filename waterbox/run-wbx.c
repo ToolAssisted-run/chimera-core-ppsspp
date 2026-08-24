@@ -71,9 +71,10 @@ static uintptr_t proc(mb_host *h, const char *n)
 int main(int argc, char **argv)
 {
 	const char *wbxPath = 0, *romPath = 0;
-	long frames = 60; int rerecord = 0, blank = 0, plainrom = 0;
+	long frames = 60; int rerecord = 0, blank = 0, plainrom = 0, rewind = 0;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--rerecord")) rerecord = 1;
+		else if (!strcmp(argv[i], "--rewind")) rewind = 1;
 		else if (!strcmp(argv[i], "--plain-rom")) plainrom = 1;
 		else if (!strcmp(argv[i], "--blank")) blank = 1;
 		else if (!wbxPath) wbxPath = argv[i];
@@ -146,6 +147,38 @@ int main(int argc, char **argv)
 
 	uint64_t vh = 0, ah = 0;
 	membuf st = {0};
+
+	/* --rewind: the TAS shape of savestates. Run the first half, save, run the
+	 * second half recording its digests, load the mid-state and run the second
+	 * half again: both passes must digest identically. */
+	if (rewind) {
+		long half = frames / 2;
+		for (long f = 0; f < half; f++)
+			FrameAdvance(blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
+		st.len = 0;
+		wbx_save_state(h, mem_write, (uintptr_t)&st, &r);
+		if (r.error_message[0]) { fprintf(stderr, "rewind save: %s\n", r.error_message); return 1; }
+		uint64_t v1 = 0, a1 = 0, v2 = 0, a2 = 0;
+		for (long f = half; f < frames; f++) {
+			FrameAdvance(blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
+			v1 = fnv(v1, (const void *)GetVideoBgra(), 480 * 272 * 4);
+			a1 = fnv(a1, (const void *)GetAudio(), (size_t)GetAudioSampleCount() * 4);
+		}
+		st.pos = 0;
+		wbx_load_state(h, mem_read, (uintptr_t)&st, &r);
+		if (r.error_message[0]) { fprintf(stderr, "rewind load: %s\n", r.error_message); return 1; }
+		for (long f = half; f < frames; f++) {
+			FrameAdvance(blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
+			v2 = fnv(v2, (const void *)GetVideoBgra(), 480 * 272 * 4);
+			a2 = fnv(a2, (const void *)GetAudio(), (size_t)GetAudioSampleCount() * 4);
+		}
+		printf("rewind=%s\n", (v1 == v2 && a1 == a2) ? "identical" : "DIVERGED");
+		printf("videoHash=%016llx\nvideoHash2=%016llx\n", (unsigned long long)v1, (unsigned long long)v2);
+		wbx_deactivate_host(h, &r); wbx_destroy_host(h, &r);
+		free(st.b);
+		return (v1 == v2 && a1 == a2) ? 0 : 1;
+	}
+
 	for (long f = 0; f < frames; f++) {
 		if (rerecord) {
 			st.len = 0;

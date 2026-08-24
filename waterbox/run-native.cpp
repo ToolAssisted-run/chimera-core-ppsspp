@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
 
 	PspDrvConfig cfg;
 	cfg.bootPath = file;
-	cfg.assetsDir = assets ? assets : "../extern/ppsspp/assets";
+	cfg.assetsDir = assets ? assets : "";  // empty = embedded assets
 	cfg.memstickDir = memstick ? memstick : "bin/memstick";
 	cfg.verboseLog = verbose;
 	cfg.mountRoot = root ? root : "";

@@ -13,6 +13,8 @@
 #include "Common/Data/Convert/ColorConv.h"
 #include "Common/File/VFS/VFS.h"
 #include "Common/File/VFS/DirectoryReader.h"
+
+#include "memory-assets.h"
 #include "Common/File/FileUtil.h"
 #include "Common/Log.h"
 #include "Common/Log/LogManager.h"
@@ -204,6 +206,11 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 
 	if (!cfg.assetsDir.empty())
 		g_VFS.Register("", new DirectoryReader(Path(cfg.assetsDir)));
+	else
+		// The assets the machine needs (vfpu tables, flash0 fonts, PPGe atlas,
+		// lang, compat databases) are compiled into the image, so the native
+		// reference and the sandbox read EXACTLY the same bytes.
+		g_VFS.Register("", Chimera_CreateMemoryAssetReader());
 
 	g_Config.RestoreDefaults(RestoreSettingsBits::SETTINGS | RestoreSettingsBits::CONTROLS, true);
 
