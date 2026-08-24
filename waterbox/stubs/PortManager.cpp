@@ -20,3 +20,6 @@ void PortManager::Terminate() {}
 
 void __UPnPInit(const int timeout_ms) {}
 void __UPnPShutdown() {}
+
+void UPnP_Add(const char *protocol, unsigned short port, unsigned short intport) {}
+void UPnP_Remove(const char *protocol, unsigned short port) {}

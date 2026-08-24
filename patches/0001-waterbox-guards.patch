@@ -30,6 +30,22 @@ index 2fe810bb73..9f5b030f20 100644
  	Resources.limits.generalConstantMatrixVectorIndexing = 1;
  }
 +#endif  // SOFTGPU_ONLY
+diff --git a/Common/MemArenaPosix.cpp b/Common/MemArenaPosix.cpp
+index a413f4eaf2..08ab79d91d 100644
+--- a/Common/MemArenaPosix.cpp
++++ b/Common/MemArenaPosix.cpp
+@@ -158,7 +158,10 @@ u8* MemArena::Find4GBBase() {
+ 		return hardcoded_ptr;
+ 	}
+ #elif defined(NO_MMAP)
+-    void* base = std::malloc(0x0A000000);
++    // 256MB: the whole masked view space, so PSP-2000 (64MB RAM at
++    // 0x08000000..0x0C000000 masked) and remaster extra RAM fit too. The
++    // stock 0x0A000000 only covered a PSP-1000.
++    void* base = std::calloc(1, 0x10000000);
+     return static_cast<u8*>(base);
+ #else
+ 	size_t size = 0x10000000;
 diff --git a/Core/Debugger/SymbolMap.cpp b/Core/Debugger/SymbolMap.cpp
 index 9f4b115cd5..8ed3c98c2e 100644
 --- a/Core/Debugger/SymbolMap.cpp
