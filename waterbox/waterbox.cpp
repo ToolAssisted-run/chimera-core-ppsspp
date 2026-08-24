@@ -18,16 +18,9 @@
 #include "psp-driver.h"
 
 #include "Core/HLE/sceCtrl.h"
-#include "Core/MemMap.h"
 
 static char g_loadError[512];
 static bool g_inited;
-
-static const uint32_t kButtonMap[12] = {
-	CTRL_UP, CTRL_DOWN, CTRL_LEFT, CTRL_RIGHT,
-	CTRL_CROSS, CTRL_CIRCLE, CTRL_SQUARE, CTRL_TRIANGLE,
-	CTRL_START, CTRL_SELECT, CTRL_LTRIGGER, CTRL_RTRIGGER,
-};
 
 // Fixed output buffers, savestated as ordinary guest memory.
 static uint32_t g_video[480 * 272];
@@ -78,17 +71,7 @@ ECL_EXPORT void FrameAdvance(uint64_t input)
 	if (!g_inited)
 		return;
 
-	PspDrvInput in;
-	for (int i = 0; i < 12; i++)
-		if (input & (1ull << i))
-			in.buttons |= kButtonMap[i];
-	int lx = (int)((input >> 16) & 0xFF);
-	int ly = (int)((input >> 24) & 0xFF);
-	if (lx == 0 && ly == 0) { lx = 128; ly = 128; }  // unmapped analog = centered
-	in.leftX = (int8_t)(lx - 128);
-	in.leftY = (int8_t)(128 - ly);  // driver: positive = up (sceCtrl convention)
-
-	pspdrv_run_frame(in);
+	pspdrv_run_frame(pspdrv_input_from_packed(input));
 
 	int w, h;
 	const uint32_t *video = pspdrv_video(&w, &h);
@@ -116,33 +99,25 @@ ECL_EXPORT int InputWasRead(void) { return pspdrv_input_was_read() ? 1 : 0; }
 // ---- memory domains ----
 // Domains resolve lazily through the PSP memory map (base + masked offset).
 
-struct DomainDesc {
-	const char *name;
-	uint32_t addr;
-	uint32_t size;
-	int writable;
-};
-
-static DomainDesc domainDesc(int i)
-{
-	switch (i) {
-	case 0: return { "RAM", 0x08000000, Memory::g_MemorySize, 1 };
-	case 1: return { "VRAM", 0x04000000, 0x00200000, 1 };
-	case 2: return { "Scratchpad", 0x00010000, 0x00004000, 1 };
-	default: return { nullptr, 0, 0, 0 };
-	}
-}
-
 ECL_EXPORT int GetMemoryDomainCount(void) { return 3; }
-ECL_EXPORT const char *GetMemoryDomainName(int i) { return domainDesc(i).name; }
+ECL_EXPORT const char *GetMemoryDomainName(int i)
+{
+	const char *name = nullptr;
+	pspdrv_domain(i, &name, nullptr, nullptr);
+	return name;
+}
 ECL_EXPORT uint8_t *GetMemoryDomainPtr(int i)
 {
-	DomainDesc d = domainDesc(i);
-	if (!d.name || !Memory::base)
-		return nullptr;
-	return Memory::GetPointerWriteUnchecked(d.addr);
+	uint8_t *data = nullptr;
+	pspdrv_domain(i, nullptr, &data, nullptr);
+	return data;
 }
-ECL_EXPORT int64_t GetMemoryDomainSize(int i) { return domainDesc(i).size; }
-ECL_EXPORT int GetMemoryDomainWritable(int i) { return domainDesc(i).writable; }
+ECL_EXPORT int64_t GetMemoryDomainSize(int i)
+{
+	uint32_t size = 0;
+	pspdrv_domain(i, nullptr, nullptr, &size);
+	return size;
+}
+ECL_EXPORT int GetMemoryDomainWritable(int i) { return i >= 0 && i < 3; }
 
 }  // extern "C"

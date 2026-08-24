@@ -45,11 +45,12 @@ int main(int argc, char **argv) {
 	const char *root = nullptr;
 	const char *dumpPrefix = nullptr;
 	int frames = 60;
-	bool autotest = false, verbose = false;
+	bool autotest = false, verbose = false, gate = false;
 
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--autotest")) autotest = true;
+		else if (!strcmp(argv[i], "--gate")) gate = true;
 		else if (!strcmp(argv[i], "--verbose")) verbose = true;
 		else if (!strcmp(argv[i], "--assets") && i + 1 < argc) assets = argv[++i];
 		else if (!strcmp(argv[i], "--memstick") && i + 1 < argc) memstick = argv[++i];
@@ -77,14 +78,27 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
+	// --gate: the run-wbx protocol - the same per-frame input pattern, chained
+	// video/audio digests, final memory-domain digests - so the two builds'
+	// outputs diff directly.
+	uint64_t gateV = 0, gateA = 0;
 	PspDrvInput input;
 	for (int i = 0; i < frames; i++) {
+		if (gate) {
+			// run-wbx's padForFrame, verbatim
+			uint64_t x = (uint64_t)i * 6364136223846793005ULL + 1442695040888963407ULL;
+			x ^= x >> 33;
+			input = pspdrv_input_from_packed((x & 0xFFF) | (0x80ull << 16) | (0x80ull << 24));
+		}
 		pspdrv_run_frame(input);
 
 		int w, h, nsamp;
 		const uint32_t *video = pspdrv_video(&w, &h);
 		const int16_t *audio = pspdrv_audio(&nsamp);
-		if (!autotest) {
+		if (gate) {
+			gateV = fnv1a(video, (size_t)w * h * 4, gateV ? gateV : 1469598103934665603ULL);
+			gateA = fnv1a(audio, (size_t)nsamp * 4, gateA ? gateA : 1469598103934665603ULL);
+		} else if (!autotest) {
 			printf("frame=%d video=%016llx audio=%016llx samples=%d cycles=%llu\n",
 			       i, (unsigned long long)fnv1a(video, (size_t)w * h * 4),
 			       (unsigned long long)fnv1a(audio, (size_t)nsamp * 4), nsamp,
@@ -94,6 +108,18 @@ int main(int argc, char **argv) {
 			char path[1024];
 			snprintf(path, sizeof path, "%s%05d.tga", dumpPrefix, i);
 			writeTga(path, video, w, h);
+		}
+	}
+
+	if (gate) {
+		printf("frames=%d\n", frames);
+		printf("videoHash=%016llx\n", (unsigned long long)gateV);
+		printf("audioHash=%016llx\n", (unsigned long long)gateA);
+		for (int i = 0; ; i++) {
+			const char *dn; uint8_t *dd; uint32_t ds;
+			if (!pspdrv_domain(i, &dn, &dd, &ds))
+				break;
+			printf("domain[%s]=%016llx\n", dn, (unsigned long long)fnv1a(dd, ds));
 		}
 	}
 

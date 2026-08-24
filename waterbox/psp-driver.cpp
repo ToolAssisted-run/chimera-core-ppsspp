@@ -30,6 +30,7 @@
 #include "Core/CoreParameter.h"
 #include "Core/HLE/sceCtrl.h"
 #include "Core/HLE/sceUtility.h"
+#include "Core/MemMap.h"
 #include "Core/MIPS/MIPS.h"
 #include "Core/System.h"
 
@@ -429,4 +430,41 @@ bool pspdrv_input_was_read() {
 
 const std::string &pspdrv_debug_output() {
 	return g_debugOutput;
+}
+
+PspDrvInput pspdrv_input_from_packed(uint64_t packed) {
+	static const uint32_t kButtonMap[12] = {
+		CTRL_UP, CTRL_DOWN, CTRL_LEFT, CTRL_RIGHT,
+		CTRL_CROSS, CTRL_CIRCLE, CTRL_SQUARE, CTRL_TRIANGLE,
+		CTRL_START, CTRL_SELECT, CTRL_LTRIGGER, CTRL_RTRIGGER,
+	};
+	PspDrvInput in;
+	for (int i = 0; i < 12; i++)
+		if (packed & (1ull << i))
+			in.buttons |= kButtonMap[i];
+	int lx = (int)((packed >> 16) & 0xFF);
+	int ly = (int)((packed >> 24) & 0xFF);
+	int rx = (int)((packed >> 32) & 0xFF);
+	int ry = (int)((packed >> 40) & 0xFF);
+	if (lx == 0 && ly == 0) { lx = 128; ly = 128; }  // unmapped analog = centered
+	if (rx == 0 && ry == 0) { rx = 128; ry = 128; }
+	in.leftX = (int8_t)(lx - 128);
+	in.leftY = (int8_t)(128 - ly);  // driver: positive = up (sceCtrl convention)
+	in.rightX = (int8_t)(rx - 128);
+	in.rightY = (int8_t)(128 - ry);
+	return in;
+}
+
+bool pspdrv_domain(int i, const char **name, uint8_t **data, uint32_t *size) {
+	static const struct { const char *name; uint32_t addr; uint32_t size; } kD[] = {
+		{ "RAM", 0x08000000, 0 },
+		{ "VRAM", 0x04000000, 0x00200000 },
+		{ "Scratchpad", 0x00010000, 0x00004000 },
+	};
+	if (i < 0 || i > 2 || !Memory::base)
+		return false;
+	if (name) *name = kD[i].name;
+	if (data) *data = Memory::GetPointerWriteUnchecked(kD[i].addr);
+	if (size) *size = i == 0 ? Memory::g_MemorySize : kD[i].size;
+	return true;
 }

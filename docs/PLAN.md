@@ -95,14 +95,23 @@ Three prior bodies of work exist (see README for links):
 ## Milestones
 
 - [x] M0 survey: miniBox spec, prior attempts, upstream headless path. (2026-08-24)
-- [ ] M1 skeleton: repo layout, submodule pinned, plan committed.
-- [ ] M2a native compile: curated source list compiles natively with our defines.
-- [ ] M2b native run: our driver boots a pspautotests .prx with softgpu + IR
-      interpreter, output matches the test's .expected. Then a homebrew EBOOT.PBP.
-- [ ] M3 guest link: same list + adapter builds as core.wbx (musl, mcmodel=large),
-      Init succeeds in the sandbox.
-- [ ] M4 gate: native-vs-guest equivalence over frames + per-frame savestate
-      round-trip (run-gate.sh, QuickerNesHawk pattern).
+- [x] M1 skeleton: repo layout, submodule pinned, plan committed. (2026-08-24)
+- [x] M2a native compile: curated source list compiles natively with our defines.
+      (2026-08-24)
+- [x] M2b native run: 275/313 pspautotests pass (.expected compare); remaining:
+      psmfplayer (no ffmpeg), screenshot-compare gpu tests, atrac second-buffer,
+      savedata, io/cwd. Homebrew EBOOT still to test. (2026-08-24)
+- [x] M3 guest link + run: core.wbx boots and runs deterministically in the
+      sandbox. Root causes fixed on the way: musl 128KB thread stacks, O_CLOEXEC
+      fcntl, prctl thread names, guest sigaltstack/sigaction, exec-memory mmap
+      hint, one-open-per-file VFS (BlobFileSystem boot), fs-relative
+      thread_local stomping HOST TLS, and (in miniBox) the missing host
+      sigaltstack that made stack-page faults undeliverable - very likely the
+      year-ago attempt's unsolved crash class. (2026-08-24)
+- [x] M4 gate: run-gate.sh green - 5/5 free tests, 120 frames each,
+      native == sandbox == per-frame-savestate-rerecord, all digests
+      (video, audio, RAM, VRAM, scratchpad) bit-identical. ~60fps in-sandbox
+      on light content with the IR interpreter. (2026-08-24)
 - [ ] M5 package: waterbox.config surface (settings, firmware=PSP fonts?, keybinds),
       build-package.sh, frontend gate in Chimera.
 - [ ] M6 the long tail: memstick persistence, analog controls in the frontend,

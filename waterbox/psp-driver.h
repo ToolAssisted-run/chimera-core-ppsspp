@@ -38,6 +38,11 @@ struct PspDrvInput {
 	int8_t leftX = 0, leftY = 0, rightX = 0, rightY = 0;
 };
 
+// Decode the chimera packed-input u64 (buttons bits 0..11, analog bytes at
+// 16/24 and 32/40) into a driver input. One definition for the guest adapter,
+// run-native --gate, and run-wbx's documentation.
+PspDrvInput pspdrv_input_from_packed(uint64_t packed);
+
 // Boots the machine. Returns false and fills *error on failure.
 bool pspdrv_boot(const PspDrvConfig &config, std::string *error);
 void pspdrv_shutdown();
@@ -59,3 +64,7 @@ bool pspdrv_input_was_read();
 
 // The debug output collected so far (only when collectDebugOutput).
 const std::string &pspdrv_debug_output();
+
+// Memory domains (valid after boot): 0=RAM, 1=VRAM, 2=Scratchpad.
+// Returns false past the end.
+bool pspdrv_domain(int i, const char **name, uint8_t **data, uint32_t *size);
