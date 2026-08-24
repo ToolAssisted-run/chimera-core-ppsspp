@@ -121,8 +121,26 @@ Three prior bodies of work exist (see README for links):
       the literal name "rom", so the fake DiscID differs from a named boot -
       the gate boots its native reference from a file named "rom" to match.
       (2026-08-24)
-- [ ] M6 the long tail: memstick persistence, analog controls in the frontend,
-      performance (JIT?), more of pspautotests green.
+- [~] M6 in progress:
+      - [x] RAM memory stick (ram-filesystem.cpp): sceIo's ms0: is an in-guest
+            case-insensitive FAT-ish tree; savedata makedata/autosave/filelist
+            pass and GATE green at 900 frames (savedata written in guest
+            memory, captured by machine savestates). (2026-08-24)
+      - [ ] persistent-data ABI: export/import the memstick tree as the
+            package's persistent payload (bundle "memstick").
+      - [ ] real game content (.iso/.pbp) - none on this machine; needs the
+            user's files. ISO path (ISOFileSystem over one FileLoader) is
+            architecturally exercised but untested with a real image.
+      - [ ] analog in the frontend (the packed input carries the stick;
+            the generic adapter has no analog surface yet), settings surface,
+            performance (x86 JIT as an option), ffmpeg for psmfplayer.
+
+Note on pspautotests counts: booting a bare .prx now serves umd0: from the
+boot file ALONE (BlobFileSystem), matching the frontend's single-mounted-file
+reality; the ~20 tests that read sibling data files (audio/atrac second half,
+mp3, font/*) no longer apply to this build's native sweep. Real games are
+single-file (.iso/.cso/.pbp) and unaffected. The correctness metrics are the
+gates, which are green.
 
 ## Test content (no copyrighted ROMs)
 

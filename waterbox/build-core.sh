@@ -60,7 +60,7 @@ g++ -specs "$sr/lib/musl-gcc.specs" -mcmodel=large -fno-pic -fno-pie \
 	$(find "$here/obj-guest/pp" -mindepth 2 -name '*.o' |  grep -v 'ext/libchdr' | grep -v 'ext/lzma-sdk' | sort) \
 	"$here"/obj-guest/stubs/*.o \
 	"$here"/obj-guest/drv/psp-driver.o "$here"/obj-guest/drv/waterbox.o \
-	"$here"/obj-guest/drv/memory-assets.o "$here"/obj-guest/assets.o \
+	"$here"/obj-guest/drv/memory-assets.o "$here"/obj-guest/drv/ram-filesystem.o "$here"/obj-guest/assets.o \
 	"$here"/obj-guest/gstubs/*.o \
 	"$mbuild/source/guest/cxxglue.c.o" "$mbuild/source/guest/emulibc.c.o" \
 	"$here/obj-guest/libchdr.a" "$here/obj-guest/lib7zip.a" \

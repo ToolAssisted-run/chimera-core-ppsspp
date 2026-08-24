@@ -28,7 +28,7 @@ CXXFLAGS := $(CFLAGS) -std=c++20 -fexceptions $(CXXINCS)
 
 all: objs
 
-objs: $(OBJS) $(O)/libchdr.a $(O)/lib7zip.a $(O)/drv/psp-driver.o $(O)/drv/waterbox.o $(O)/gstubs/guest-syscalls.o $(O)/drv/memory-assets.o $(O)/assets.o
+objs: $(OBJS) $(O)/libchdr.a $(O)/lib7zip.a $(O)/drv/psp-driver.o $(O)/drv/waterbox.o $(O)/gstubs/guest-syscalls.o $(O)/drv/memory-assets.o $(O)/drv/ram-filesystem.o $(O)/assets.o
 
 $(O)/assets.s $(O)/assets-table.inc: build-assets.py
 	python3 build-assets.py --embed $(PP)/assets $(O)

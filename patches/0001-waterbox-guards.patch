@@ -194,6 +194,27 @@ index 6de92dabd6..d115610097 100644
  	std::lock_guard<std::mutex> guard(readLock_);
  	lseek(fd_, absolutePos, SEEK_SET);
  	return read(fd_, data, bytes * count) / bytes;
+diff --git a/Core/HLE/sceIo.cpp b/Core/HLE/sceIo.cpp
+index 32f19beb26..46a2e9474a 100644
+--- a/Core/HLE/sceIo.cpp
++++ b/Core/HLE/sceIo.cpp
+@@ -664,7 +664,16 @@ void __IoInit() {
+ 		memstickFlags |= FileSystemFlags::STRIP_PSP;
+ 	}
+ 
++#ifdef CHIMERA_WATERBOX
++	// The memory stick lives in guest memory (see chimera-core-ppsspp's
++	// ram-filesystem.cpp): nothing may touch the host filesystem, and
++	// whole-machine savestates then capture savedata exactly.
++	extern std::shared_ptr<IFileSystem> Chimera_CreateRamMemstick(IHandleAllocator *hAlloc);
++	auto memstickSystem = Chimera_CreateRamMemstick(&pspFileSystem);
++	(void)memstickFlags;
++#else
+ 	auto memstickSystem = std::make_shared<DirectoryFileSystem>(&pspFileSystem, g_Config.memStickDirectory, memstickFlags);
++#endif
+ 
+ 	pspFileSystem.Mount("ms0:", memstickSystem);
+ 	pspFileSystem.Mount("fatms0:", memstickSystem);
 diff --git a/Core/HLE/sceRtc.cpp b/Core/HLE/sceRtc.cpp
 index 12a2c0adf0..83521b749e 100644
 --- a/Core/HLE/sceRtc.cpp
