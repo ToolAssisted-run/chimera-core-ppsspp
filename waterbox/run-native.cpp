@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
 			       (unsigned long long)fnv1a(audio, (size_t)nsamp * 4), nsamp,
 			       (unsigned long long)pspdrv_cycles());
 		}
-		if (dumpPrefix && (i % 30) == 0) {
+		if (dumpPrefix) {
 			char path[1024];
 			snprintf(path, sizeof path, "%s%05d.tga", dumpPrefix, i);
 			writeTga(path, video, w, h);

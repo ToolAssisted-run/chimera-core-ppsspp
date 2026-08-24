@@ -306,8 +306,14 @@ static void ReadbackVideo() {
 	if (!gpuDebug)
 		return;
 	GPUDebugBuffer buf;
-	if (!gpuDebug->GetCurrentFramebuffer(buf, GPU_DBG_FRAMEBUF_DISPLAY, -1))
+	if (!gpuDebug->GetCurrentFramebuffer(buf, GPU_DBG_FRAMEBUF_DISPLAY, -1)) {
+		if (g_verboseLog)
+			fprintf(stderr, "ReadbackVideo: GetCurrentFramebuffer FAILED\n");
 		return;
+	}
+	if (g_verboseLog)
+		fprintf(stderr, "ReadbackVideo: stride2=%d h=%d stride=%d fmt=%d flip=%d\n",
+		        (int)buf.GetStride(), (int)buf.GetHeight(), buf.GetStride(), (int)buf.GetFormat(), buf.GetFlipped() ? 1 : 0);
 	if (buf.GetStride() == 0 || buf.GetHeight() == 0)
 		return;
 
