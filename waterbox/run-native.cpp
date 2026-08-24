@@ -44,6 +44,8 @@ int main(int argc, char **argv) {
 	const char *memstick = nullptr;
 	const char *root = nullptr;
 	const char *dumpPrefix = nullptr;
+	const char *sliceOut = nullptr;
+	unsigned long sliceOff = 0, sliceLen = 0;
 	int frames = 60;
 	bool autotest = false, verbose = false, gate = false;
 
@@ -56,6 +58,11 @@ int main(int argc, char **argv) {
 		else if (!strcmp(argv[i], "--memstick") && i + 1 < argc) memstick = argv[++i];
 		else if (!strcmp(argv[i], "--root") && i + 1 < argc) root = argv[++i];
 		else if (!strcmp(argv[i], "--dump-video") && i + 1 < argc) dumpPrefix = argv[++i];
+		else if (!strcmp(argv[i], "--ram-slice") && i + 3 < argc) {
+			sliceOff = strtoul(argv[++i], nullptr, 0);
+			sliceLen = strtoul(argv[++i], nullptr, 0);
+			sliceOut = argv[++i];
+		}
 		else if (argv[i][0] != '-') file = argv[i];
 		else { fprintf(stderr, "unknown arg %s\n", argv[i]); return 2; }
 	}
@@ -120,6 +127,17 @@ int main(int argc, char **argv) {
 			if (!pspdrv_domain(i, &dn, &dd, &ds))
 				break;
 			printf("domain[%s]=%016llx\n", dn, (unsigned long long)fnv1a(dd, ds));
+		}
+	}
+
+	if (sliceOut) {
+		const char *dn; uint8_t *dd; uint32_t ds;
+		if (pspdrv_domain(0, &dn, &dd, &ds) && sliceOff + sliceLen <= ds) {
+			FILE *f = fopen(sliceOut, "wb");
+			if (f) {
+				fwrite(dd + sliceOff, 1, sliceLen, f);
+				fclose(f);
+			}
 		}
 	}
 

@@ -112,8 +112,15 @@ Three prior bodies of work exist (see README for links):
       native == sandbox == per-frame-savestate-rerecord, all digests
       (video, audio, RAM, VRAM, scratchpad) bit-identical. ~60fps in-sandbox
       on light content with the IR interpreter. (2026-08-24)
-- [ ] M5 package: waterbox.config surface (settings, firmware=PSP fonts?, keybinds),
-      build-package.sh, frontend gate in Chimera.
+- [x] M5 package: waterbox.config (PSP Controller, 480x272, 60000000/1001001,
+      empty settings surface for now), default_keybinds.json, deterministic
+      build-package.sh -> <chimera>/build/Cores/ppsspp.zip, and
+      tests/run-frontend.sh GREEN: Chimera loads the package, runs a .prx 120
+      frames with a RAM slice byte-identical to the native reference, and
+      adopts the package's 12 keybinds. Note: the frontend mounts the file as
+      the literal name "rom", so the fake DiscID differs from a named boot -
+      the gate boots its native reference from a file named "rom" to match.
+      (2026-08-24)
 - [ ] M6 the long tail: memstick persistence, analog controls in the frontend,
       performance (JIT?), more of pspautotests green.
 

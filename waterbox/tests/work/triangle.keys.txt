@@ -1,0 +1,1 @@
+PSP Controller: 12 bindings adopted from the package

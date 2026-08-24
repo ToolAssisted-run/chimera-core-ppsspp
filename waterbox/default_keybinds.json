@@ -1,0 +1,28 @@
+{
+	"_comment": [
+		"Default bindings for the PSP controller this package declares. The frontend ships no",
+		"bindings of its own - a package that declares a controller says how it is played by",
+		"default; the user's own bindings always win. The face-button layout follows the common",
+		"emulator convention: Z/X for the primary pair (Cross/Circle), A/S above them",
+		"(Square/Triangle), Q/W for the shoulders."
+	],
+	"AllTrollers": {
+		"PSP Controller": {
+			"P1 Up": "Up, J1 POV1U, X1 DpadUp, X1 LStickUp",
+			"P1 Down": "Down, J1 POV1D, X1 DpadDown, X1 LStickDown",
+			"P1 Left": "Left, J1 POV1L, X1 DpadLeft, X1 LStickLeft",
+			"P1 Right": "Right, J1 POV1R, X1 DpadRight, X1 LStickRight",
+			"P1 Cross": "Z, J1 B2, X1 A",
+			"P1 Circle": "X, J1 B3, X1 B",
+			"P1 Square": "A, J1 B1, X1 X",
+			"P1 Triangle": "S, J1 B4, X1 Y",
+			"P1 Start": "Enter, J1 B10, X1 Start",
+			"P1 Select": "Space, J1 B9, X1 Back",
+			"P1 L": "Q, J1 B5, X1 LeftShoulder",
+			"P1 R": "W, J1 B6, X1 RightShoulder"
+		}
+	},
+	"AllTrollersAutoFire": {
+		"PSP Controller": {}
+	}
+}

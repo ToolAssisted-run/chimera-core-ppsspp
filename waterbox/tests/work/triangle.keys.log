@@ -1,0 +1,384 @@
+parsing command-line flags: --headless --config=/home/jaffar/chimera-core-ppsspp/waterbox/tests/work/config.triangle.keys.ini --core=/home/jaffar/chimera/build/Cores/ppsspp.zip --lua=/home/jaffar/chimera-core-ppsspp/waterbox/tests/frontend-ram.lua /home/jaffar/chimera-core-ppsspp/waterbox/../extern/ppsspp/pspautotests/tests/gpu/triangle/triangle.prx
+Gtk not found (missing LD_LIBRARY_PATH to libgtk-x11-2.0.so.0?), using built-in colorscheme
+libEGL warning: DRI3 error: Could not get DRI3 device
+libEGL warning: Ensure your X server supports DRI3 to get accelerated rendering
+Using SDL2 for host input (keyboard + gamepads)
+[ALSOFT] (EE) Could not query RTKit: No such file or directory (2)
+Chimera Commit 1470e21d1
+I ThreadManager::Init(compute threads: 4, all: 8)
+I Restored FirstRun from false to default true
+I Restored AutoRun from false to default true
+I Restored IgnoreBadMemAccess from false to default true
+I Restored CheckForNewVersion from false to default true
+E Missing filesystem for 'lang/.ini'
+I Restored Language from "" to default "en_US"
+I Restored EnablePlugins from false to default true
+I Restored CwCheatRefreshRate from 0 to default 77
+I Restored EnableStateUndo from false to default true
+I Restored StateLoadUndoGame from "" to default "NA"
+I Restored StateUndoLastSaveGame from "" to default "NA"
+I Restored StateUndoLastSaveSlot from 0 to default -5
+I Restored SaveStateSlotCount from 0 to default 5
+I Restored GameGridScale from 0.000000 to default 1.000000
+I Restored GridView1 from false to default true
+I Restored GridView2 from false to default true
+I Restored ReportingHost from "" to default "default"
+I Restored CompressSymbols from false to default true
+I Restored RemoteISOSubdir from "" to default "/"
+I Restored AskForExitConfirmationAfterSeconds from 0 to default 300
+I Restored BackgroundAnimation from 0 to default 1
+I Restored TransparentBackground from false to default true
+I Restored UISaturation from 0.000000 to default 1.000000
+I Restored WindowX from 0 to default -1
+I Restored WindowY from 0 to default -1
+I Restored FullscreenOnDoubleclick from false to default true
+I Restored ShowMenuBar from false to default true
+I Restored MemStickInserted from false to default true
+I Restored LoadPlugins from false to default true
+I Restored NotificationPos from 0 to default 4
+I Restored UIScaleFactor from 0 to default -1
+I Restored CPUCore from 0 to default 1
+I Restored SeparateSASThread from false to default true
+I Restored FastMemoryAccess from false to default true
+I Restored FunctionReplacements from false to default true
+I Restored AndroidFramerateMode from 0 to default 1
+I Restored VendorBugChecksEnabled from false to default true
+I Restored SoftwareRendererJit from false to default true
+I Restored HardwareTransform from false to default true
+I Restored SoftwareSkinning from false to default true
+I Restored TextureFiltering from 0 to default 1
+I Longest display side: -1 pixels. Choosing scale 1
+I Restored InternalResolution from 0 to default 1
+I Restored AndroidHwScale from 0 to default 1
+I Restored HighQualityDepth from 0 to default 1
+I Restored StereoToMonoShader from "" to default "RedBlue"
+I Restored FrameRate2 from 0 to default -1
+I Restored AnalogFrameRate from 0 to default 240
+I Restored AnisotropyLevel from 0 to default 4
+I Restored VertexDecJit from false to default true
+I Restored DisplayCropTo16x9 from false to default true
+I Restored ReplaceTextures from false to default true
+I Restored TexScalingLevel from 0 to default 1
+I Restored VerticalSync from false to default true
+I Restored SplineBezierQuality from 0 to default 2
+I Restored TextureShader from "" to default "Off"
+I Restored InflightFrames from 0 to default 3
+I Restored MultiThreading from false to default true
+I Restored ShaderCache from false to default true
+I Restored UberShaderVertex from false to default true
+I Restored UberShaderFragment from false to default true
+I Restored Enable from false to default true
+I Restored AudioBufferSize from 0 to default 256
+I Restored FillAudioGaps from false to default true
+I Restored AudioSyncMode from 0 to default 1
+I Restored GlobalVolume from 0 to default 10
+I Restored ReverbVolume from 0 to default 10
+I Restored AchievementSoundVolume from 0 to default 6
+I Restored GameVolume from 0 to default 100
+I Restored ReverbRelativeVolume from 0 to default 100
+I Restored AltSpeedRelativeVolume from 0 to default 100
+I Restored AchievementVolume from 0 to default 75
+I Restored UIVolume from 0 to default 75
+I Restored GamePreviewVolume from 0 to default 75
+I Restored AutoAudioDevice from false to default true
+I Restored AudioMixWithOthers from false to default true
+I Restored TiltBaseAngleY from 0.000000 to default 0.900000
+I Restored TiltSensitivityX from 0 to default 60
+I Restored TiltSensitivityY from 0 to default 60
+I Restored TiltCircularDeadzone from false to default true
+I Restored TiltInputType from 0 to default 1
+I Restored TouchButtonStyle from 0 to default 1
+I Restored TouchButtonOpacity from 0 to default 65
+I Restored TouchButtonHideSeconds from 0 to default 8
+I Restored TouchSnapGridSize from 0 to default 64
+I Restored AnalogDeadzone from 0.000000 to default 0.150000
+I Restored AnalogSensitivity from 0.000000 to default 1.100000
+I Restored AnalogAutoRotSpeed from 0.000000 to default 8.000000
+I Restored AnalogLimiterDeadzone from 0.000000 to default 0.600000
+I Restored AnalogTriggerThreshold from 0.000000 to default 0.750000
+I Restored AnalogStickThreshold from 0.000000 to default 0.750000
+I Restored MouseSensitivity from 0.000000 to default 0.100000
+I Restored MouseSmoothing from 0.000000 to default 0.900000
+I Restored MouseWheelUpDelayMs from 0 to default 80
+I Restored SystemControls from false to default true
+I Restored RapidFileInterval from 0 to default 5
+I Restored PSPModel from 0 to default 1
+I Restored PSPFirmwareVersion from 0 to default 660
+I Restored NickName from "" to default "PPSSPP"
+I Restored GameLanguage from 0 to default -1
+I Restored ButtonPreference from 0 to default 1
+I Restored EncryptSave from false to default true
+I Restored MemStickSize from 0 to default 16
+I Restored proAdhocServer from "" to default "socom.cc"
+I Restored PortOffset from 0 to default 10000
+I Restored PrimaryDNSServer from "" to default "67.222.156.250"
+I Restored InfrastructureAutoDNS from false to default true
+I Restored AdhocServerListUrl from "" to default "http://metadata.ppsspp.org/adhoc-servers.json"
+I Restored EnableQuickChat from false to default true
+I Restored QuickChat1 from "" to default "Quick Chat 1"
+I Restored QuickChat2 from "" to default "Quick Chat 2"
+I Restored QuickChat3 from "" to default "Quick Chat 3"
+I Restored QuickChat4 from "" to default "Quick Chat 4"
+I Restored QuickChat5 from "" to default "Quick Chat 5"
+I Restored DisasmWindowX from 0 to default -1
+I Restored DisasmWindowY from 0 to default -1
+I Restored DisasmWindowW from 0 to default -1
+I Restored DisasmWindowH from 0 to default -1
+I Restored GEWindowX from 0 to default -1
+I Restored GEWindowY from 0 to default -1
+I Restored GEWindowW from 0 to default -1
+I Restored GEWindowH from 0 to default -1
+I Restored ConsoleWindowX from 0 to default -1
+I Restored ConsoleWindowY from 0 to default -1
+I Restored FontWidth from 0 to default 8
+I Restored FontHeight from 0 to default 12
+I Restored ShowBottomTabTitles from false to default true
+I Restored ThemeName from "" to default "Default"
+I Restored VREnable from false to default true
+I Restored VRForce72Hz from false to default true
+I Restored VRImmersiveMode from false to default true
+I Restored VRRescaleHUD from false to default true
+I Restored VRCanvasDistance from 0.000000 to default 12.000000
+I Restored VRCanvas3DDistance from 0.000000 to default 3.000000
+I Restored VRFieldOfView from 0.000000 to default 100.000000
+I Restored VRHeadUpDisplayScale from 0.000000 to default 0.300000
+I Restored AchievementsChallengeMode from false to default true
+I Restored AchievementsSoundEffects from false to default true
+I Restored AchievementsLeaderboardTrackerPos from 0 to default 3
+I Restored AchievementsLeaderboardStartedOrFailedPos from 0 to default 3
+I Restored AchievementsLeaderboardSubmittedPos from 0 to default 3
+I Restored AchievementsProgressPos from 0 to default 3
+I Restored AchievementsChallengePos from 0 to default 3
+I Restored AchievementsUnlockedPos from 0 to default 4
+I Starting loader thread...
+N PPSSPP v1.20.4-chimera
+E ISO looks bogus, expected CD001 signature not present? Giving up...
+I ELF, using full PSP-2000 memory access
+I Unidentified PSP title
+W No DiscID found - generating a fake one: 'ROMH00334' (from rom)
+E Missing filesystem for 'compat.ini'
+I OSD: File not found: compat.ini ()
+I Memory system initialized. Base at 0x36f170c6020 (RAM at @ 0x36f00c73710, uncached @ 0x36f00c736f0)
+I File is an ELF or loose PBP rom
+N rom
+D No game-specific settings found in /ROMH00334_ppsspp.ini. Using global defaults.
+I Initializing kernel...
+I Kernel and user memory pools initialized
+E CreateFullPath(): Not yet supported
+I CreateEmptyFile: /wJpCzSBNnZfxSgoS
+E CreateEmptyFile: failed to create '/wJpCzSBNnZfxSgoS': Unknown error
+W Delete: '/wJpCzSBNnZfxSgoS' already does not exist
+I Is file system case sensitive? no (base: '') (checkOK: 0)
+D CreateDir('/PSP')
+E CreateDir: mkdir failed on /PSP: Read-only file system
+D CreateDir('/PSP/SAVEDATA')
+E CreateDir: mkdir failed on /PSP/SAVEDATA: Read-only file system
+I LocalHost IP will be 127.0.0.0 [12:34:56:78:9a:bc]
+D CreateDir('/PSP')
+E CreateDir: mkdir failed on /PSP: Read-only file system
+D CreateDir('/PSP/PPSSPP_STATE')
+E CreateDir: mkdir failed on /PSP/PPSSPP_STATE: Read-only file system
+E Missing filesystem for 'flash0/font/jpn0.pgf'
+I PPGe drawing library initialized. DL: 08000400 Data: 08010400 Atlas: 00000000 (0) Args: 08020400
+I Kernel initialized.
+D String section: 34
+D Relocatable module
+D 1 segments:
+D Type: 00000001 Vaddr: 00000000 Filesz: 0001d238 Memsz: 001359b4 
+D Loadable Segment Copied to 08804000, size 001359b4
+D -----------
+D Block: 08800000 - 08804000 size 00004000 taken=1 tag=usersystemlib
+D Block: 08804000 - 08939a00 size 00135a00 taken=1 tag=ELF/TESTMODULE
+D Block: 08939a00 - 0c000000 size 036c6600 taken=0 tag=(untitled)
+D -----------
+D 35 sections:
+D NonData Section found: (null)     Ignoring (size=00000000) (flags=00000000)
+D Data Section found: .text     Sitting at 08804000, size 0001a344
+D NonData Section found: .rel.text     Ignoring (size=000074c8) (flags=00000000)
+D Data Section found: .init     Sitting at 0881e344, size 00000024
+D NonData Section found: .rel.init     Ignoring (size=00000010) (flags=00000000)
+D Data Section found: .fini     Sitting at 0881e368, size 0000001c
+D NonData Section found: .rel.fini     Ignoring (size=00000008) (flags=00000000)
+D Data Section found: .sceStub.text     Sitting at 0881e384, size 00000280
+D Data Section found: .lib.ent.top     Sitting at 0881e604, size 00000004
+D Data Section found: .lib.ent     Sitting at 0881e608, size 00000010
+D NonData Section found: .rel.lib.ent     Ignoring (size=00000008) (flags=00000000)
+D Data Section found: .lib.ent.btm     Sitting at 0881e618, size 00000004
+D Data Section found: .lib.stub.top     Sitting at 0881e61c, size 00000004
+D Data Section found: .lib.stub     Sitting at 0881e620, size 000000c8
+D NonData Section found: .rel.lib.stub     Ignoring (size=000000f0) (flags=00000000)
+D Data Section found: .lib.stub.btm     Sitting at 0881e6e8, size 00000004
+D Data Section found: .rodata.sceModuleInfo     Sitting at 0881e6f0, size 00000040
+D NonData Section found: .rel.rodata.sceModuleInfo     Ignoring (size=00000028) (flags=00000000)
+D Data Section found: .rodata.sceResident     Sitting at 0881e730, size 000000d4
+D NonData Section found: .rel.rodata.sceResident     Ignoring (size=00000010) (flags=00000000)
+D Data Section found: .rodata.sceNid     Sitting at 0881e804, size 00000140
+D Data Section found: .rodata     Sitting at 0881e948, size 00000f48
+D NonData Section found: .rel.rodata     Ignoring (size=00000e98) (flags=00000000)
+D Data Section found: .eh_frame     Sitting at 0881f990, size 0000003c
+D NonData Section found: .rel.eh_frame     Ignoring (size=00000010) (flags=00000000)
+D Data Section found: .ctors     Sitting at 0881f9cc, size 00000008
+D Data Section found: .dtors     Sitting at 0881f9d4, size 00000008
+D Data Section found: .jcr     Sitting at 0881f9dc, size 00000004
+D Data Section found: .data     Sitting at 0881f9e0, size 0000184c
+D NonData Section found: .rel.data     Ignoring (size=00000948) (flags=00000000)
+D Data Section found: .sdata     Sitting at 0882122c, size 0000000c
+D NonData Section found: .rel.sdata     Ignoring (size=00000010) (flags=00000000)
+D Data Section found: .sbss     Sitting at 08821238, size 00000000
+D Data Section found: .bss     Sitting at 08821240, size 00118774
+D NonData Section found: .shstrtab     Ignoring (size=00000186) (flags=00000000)
+D Relocations:
+D .rel.text: Performing 3737 relocations on .text : offset = 0001d810
+D Loading 3737 relocations...
+D .rel.init: Performing 2 relocations on .init : offset = 00024cd8
+D Loading 2 relocations...
+D .rel.fini: Performing 1 relocations on .fini : offset = 00024ce8
+D Loading 1 relocations...
+D .rel.lib.ent: Performing 1 relocations on .lib.ent : offset = 00024cf0
+D Loading 1 relocations...
+D .rel.lib.stub: Performing 30 relocations on .lib.stub : offset = 00024cf8
+D Loading 30 relocations...
+D .rel.rodata.sceModuleInfo: Performing 5 relocations on .rodata.sceModuleInfo : offset = 00024de8
+D Loading 5 relocations...
+D .rel.rodata.sceResident: Performing 2 relocations on .rodata.sceResident : offset = 00024e10
+D Loading 2 relocations...
+D .rel.rodata: Performing 467 relocations on .rodata : offset = 00024e20
+D Loading 467 relocations...
+D .rel.eh_frame: Performing 2 relocations on .eh_frame : offset = 00025cb8
+D Loading 2 relocations...
+D .rel.data: Performing 297 relocations on .data : offset = 00025cc8
+D Loading 297 relocations...
+D .rel.sdata: Performing 2 relocations on .sdata : offset = 00026610
+D Loading 2 relocations...
+I Module TESTMODULE: 08829220 0881e608 0881e620
+D ===================================================
+D Importing Module sceCtrl, stubs at 0881e384
+D Importing sceCtrlSetSamplingCycle : 0881e384
+D Importing sceCtrlSetSamplingMode : 0881e38c
+D Importing sceCtrlPeekBufferPositive : 0881e394
+D -------------------------------------------------------------
+D Importing Module SysMemUserForUser, stubs at 0881e39c
+D Importing sceKernelMaxFreeMemSize : 0881e39c
+D Importing sceKernelTotalFreeMemSize : 0881e3a4
+D Importing sceKernelQueryMemoryInfo : 0881e3ac
+D Importing sceKernelDevkitVersion : 0881e3b4
+D Importing sceKernelPrintf : 0881e3bc
+D Importing sceKernelGetPTRIG : 0881e3c4
+D Importing sceKernelSetPTRIG : 0881e3cc
+D Importing sceKernelAllocPartitionMemory : 0881e3d4
+D Importing sceKernelFreePartitionMemory : 0881e3dc
+D Importing sceKernelGetBlockHeadAddr : 0881e3e4
+D Importing sceKernelGetMemoryBlockAddr : 0881e3ec
+D Importing sceKernelAllocMemoryBlock : 0881e3f4
+D Importing sceKernelFreeMemoryBlock : 0881e3fc
+D Importing sceKernelSetCompilerVersion : 0881e404
+D Importing sceKernelGetCompiledSdkVersion : 0881e40c
+D Importing sceKernelSetCompiledSdkVersion : 0881e414
+D Importing sceKernelSetCompiledSdkVersion370 : 0881e41c
+D Importing sceKernelSetCompiledSdkVersion380_390 : 0881e424
+D Importing sceKernelSetCompiledSdkVersion395 : 0881e42c
+D Importing sceKernelSetCompiledSdkVersion401_402 : 0881e434
+D Importing sceKernelSetCompiledSdkVersion500_505 : 0881e43c
+D Importing sceKernelSetCompiledSdkVersion507 : 0881e444
+D Importing sceKernelSetCompiledSdkVersion600_602 : 0881e44c
+D Importing sceKernelSetCompiledSdkVersion603_605 : 0881e454
+D Importing sceKernelSetCompiledSdkVersion606 : 0881e45c
+D Importing sceKernelSetUsersystemLibWork : 0881e464
+D Importing SysMemUserForUser_ACBD88CA : 0881e46c
+D Importing SysMemUserForUser_D8DE5C1E : 0881e474
+D Importing SysMemUserForUser_945E45DA : 0881e47c
+D -------------------------------------------------------------
+D Importing Module sceDisplay, stubs at 0881e484
+D Importing sceDisplaySetMode : 0881e484
+D Importing sceDisplaySetFrameBuf : 0881e48c
+D Importing sceDisplayGetFrameBuf : 0881e494
+D Importing sceDisplayWaitVblankStart : 0881e49c
+D -------------------------------------------------------------
+D Importing Module sceGe_user, stubs at 0881e4a4
+D Importing sceGeEdramGetAddr : 0881e4a4
+D Importing sceGeListEnQueue : 0881e4ac
+D Importing sceGeListUpdateStallAddr : 0881e4b4
+D Importing sceGeListSync : 0881e4bc
+D Importing sceGeDrawSync : 0881e4c4
+D Importing sceGeSetCallback : 0881e4cc
+D Importing sceGeUnsetCallback : 0881e4d4
+D -------------------------------------------------------------
+D Importing Module sceNetInet, stubs at 0881e4dc
+D Importing sceNetInetGetsockopt : 0881e4dc
+D Importing sceNetInetSetsockopt : 0881e4e4
+D Importing sceNetInetGetErrno : 0881e4ec
+D -------------------------------------------------------------
+D Importing Module IoFileMgrForUser, stubs at 0881e4f4
+D Importing sceIoClose : 0881e4f4
+D Importing sceIoOpen : 0881e4fc
+D Importing sceIoRead : 0881e504
+D Importing sceIoWrite : 0881e50c
+D Importing sceIoLseek : 0881e514
+D Importing sceIoDopen : 0881e51c
+D Importing sceIoDclose : 0881e524
+D Importing sceIoChdir : 0881e52c
+D Importing sceIoGetstat : 0881e534
+D Importing sceIoDevctl : 0881e53c
+D -------------------------------------------------------------
+D Importing Module ModuleMgrForUser, stubs at 0881e544
+D Importing sceKernelSelfStopUnloadModule : 0881e544
+D -------------------------------------------------------------
+D Importing Module StdioForUser, stubs at 0881e54c
+D Importing sceKernelStdin : 0881e54c
+D Importing sceKernelStdout : 0881e554
+D Importing sceKernelStderr : 0881e55c
+D -------------------------------------------------------------
+D Importing Module ThreadManForUser, stubs at 0881e564
+D Importing sceKernelCreateCallback : 0881e564
+D Importing sceKernelSleepThreadCB : 0881e56c
+D Importing sceKernelCreateEventFlag : 0881e574
+D Importing sceKernelDeleteEventFlag : 0881e57c
+D Importing sceKernelSetEventFlag : 0881e584
+D Importing sceKernelCreateMsgPipe : 0881e58c
+D Importing sceKernelDeleteMsgPipe : 0881e594
+D Importing sceKernelSendMsgPipe : 0881e59c
+D Importing sceKernelTrySendMsgPipe : 0881e5a4
+D Importing sceKernelReceiveMsgPipe : 0881e5ac
+D Importing sceKernelTryReceiveMsgPipe : 0881e5b4
+D Importing sceKernelReferMsgPipeStatus : 0881e5bc
+D Importing sceKernelGetSystemTimeWide : 0881e5c4
+D Importing sceKernelCreateThread : 0881e5cc
+D Importing sceKernelStartThread : 0881e5d4
+D Importing sceKernelExitThread : 0881e5dc
+D Importing sceKernelTerminateThread : 0881e5e4
+D Importing sceKernelGetThreadCurrentPriority : 0881e5ec
+D -------------------------------------------------------------
+D Importing Module LoadExecForUser, stubs at 0881e5f4
+D Importing sceKernelExitGame : 0881e5f4
+D Importing sceKernelRegisterExitCallback : 0881e5fc
+D -------------------------------------------------------------
+I Exporting ent 0 named TESTMODULE, 1 funcs, 1 vars, resident 0881e730
+I Module entry: 088040ac (TESTMODULE 0100)
+I Starting modules...
+I Starting graphics...
+I Entering __IoManagerThread
+[Lua Console] loaded script /home/jaffar/chimera-core-ppsspp/waterbox/tests/frontend-ram.lua
+I 276=sceKernelCreateThread(user_main, 08804000, 00000020, 262144, 80004000, 00000000)
+D 0=sceKernelStartThread(276, 10, 0bfffef0)
+D __KernelReturnFromThread: 0
+D Context switch: root -> user_main (275->276, pc: 08000030->08804000, returned from module) +159us
+D Freeing thread stack root
+D K 0=sceKernelDeleteThread(10)
+D 277=sceIoDopen(umd0:)
+D 0=sceIoDclose(277)
+D 0=sceIoChdir(umd0:)
+D 0=sceKernelStdin()
+D 1=sceKernelStdout()
+D 2=sceKernelStderr()
+D sceIoDevctl("kemulator:", 00000003, 00000000, 0, 00000000, 0)
+D 0=sceIoDevctl(kemulator:, 00000003, 00000000[invalid], 0, 00000000[invalid], 0)
+D sceIoDevctl("kemulator:", 00000001, 00000000, 0, 0881fe44, 4)
+D 0=sceIoDevctl(kemulator:, 00000001, 00000000[invalid], 0, 0881fe44[00000000], 4)
+D 278=sceKernelAllocPartitionMemory(2, block, 0, 01500000, 00000000)
+D 08939a00=sceKernelGetBlockHeadAddr(278): addr: 08939a00
+D 32=sceKernelGetThreadCurrentPriority()
+I 279=sceKernelCreateThread(resched, 088065b8, 00000020, 4096, 00000000, 00000000)
+D 00000000=sceDisplaySetMode(0, 480, 272)
+D Context switch: user_main -> idle0 (276->272, pc: 0881bc40->08000000, display mode) +244us
+D Context switch: idle0 -> user_main (272->276, pc: 08000000->0881bc40, entered vblank) +15548us
+ReadbackVideo: GetCurrentFramebuffer FAILED

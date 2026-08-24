@@ -66,6 +66,29 @@ g++ -specs "$sr/lib/musl-gcc.specs" -mcmodel=large -fno-pic -fno-pie \
 	-L"$sr/lib" -lstdc++ -lgcc -lgcc_eh -lc
 echo "built $out/core.wbx"
 
+# What built this guest, for the package to carry. Functions of the INPUTS only:
+# versions and flags, never timestamps, hostnames or absolute paths.
+musl_version="$(cat "$mb/extern/musl/VERSION" 2>/dev/null || echo unknown)"
+binutils_version="$(ld --version | head -1 | grep -o '[0-9][0-9.]*$' || echo unknown)"
+os_id="$(. /etc/os-release 2>/dev/null && printf '%s %s' "${ID:-unknown}" "${VERSION_ID:-}" || echo unknown)"
+guest_kit="$(git -C "$mb" rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
+ppsspp_pin="$(git -C "$pp" describe --tags --always 2>/dev/null || echo unknown)"
+python3 - "$out/build-info.json" <<PYINFO
+import json, sys
+json.dump({
+    "toolchain": {
+        "compiler": "gcc $gccver",
+        "libstdc++": "$gccver",
+        "binutils": "$binutils_version",
+        "target": "x86_64-linux-musl",
+        "musl": "$musl_version",
+    },
+    "guestKit": {"name": "miniBox", "commit": "$guest_kit"},
+    "upstream": {"name": "PPSSPP", "pin": "$ppsspp_pin"},
+    "builtOn": "$os_id",
+}, open(sys.argv[1], "w"), indent=2, sort_keys=True)
+PYINFO
+
 # host driver for the gate
 mblinux="$mb/build/meson-linux"
 [ -f "$mblinux/source/host/libminiboxhost.so" ] || mblinux="$mbuild"

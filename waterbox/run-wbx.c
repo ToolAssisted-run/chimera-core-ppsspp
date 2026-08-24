@@ -71,9 +71,10 @@ static uintptr_t proc(mb_host *h, const char *n)
 int main(int argc, char **argv)
 {
 	const char *wbxPath = 0, *romPath = 0;
-	long frames = 60; int rerecord = 0, blank = 0;
+	long frames = 60; int rerecord = 0, blank = 0, plainrom = 0;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--rerecord")) rerecord = 1;
+		else if (!strcmp(argv[i], "--plain-rom")) plainrom = 1;
 		else if (!strcmp(argv[i], "--blank")) blank = 1;
 		else if (!wbxPath) wbxPath = argv[i];
 		else if (!romPath) romPath = argv[i];
@@ -101,14 +102,19 @@ int main(int argc, char **argv)
 	const char *base = strrchr(romPath, '/');
 	base = base ? base + 1 : romPath;
 	char vfsname[512];
-	snprintf(vfsname, sizeof vfsname, "/%s", base);
+	if (plainrom)
+		snprintf(vfsname, sizeof vfsname, "rom");  /* the frontend's fixed mount name */
+	else
+		snprintf(vfsname, sizeof vfsname, "/%s", base);
 	freader romr = { rf };
 	wbx_mount_file(h, vfsname, file_read, (uintptr_t)&romr, false, &r);
 	if (r.error_message[0]) { fprintf(stderr, "mount rom: %s\n", r.error_message); return 1; }
 	fclose(rf);
-	memreader nr = { (const uint8_t *)vfsname, strlen(vfsname), 0 };
-	wbx_mount_file(h, "rom.name", mem_reader, (uintptr_t)&nr, false, &r);
-	if (r.error_message[0]) { fprintf(stderr, "mount rom.name: %s\n", r.error_message); return 1; }
+	if (!plainrom) {
+		memreader nr = { (const uint8_t *)vfsname, strlen(vfsname), 0 };
+		wbx_mount_file(h, "rom.name", mem_reader, (uintptr_t)&nr, false, &r);
+		if (r.error_message[0]) { fprintf(stderr, "mount rom.name: %s\n", r.error_message); return 1; }
+	}
 
 	wbx_activate_host(h, &r);
 	intfn Init = (intfn)proc(h, "Init");
