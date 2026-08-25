@@ -116,4 +116,36 @@ if [ -f "$ft" ]; then
 	fi
 fi
 
+# ---- the savedata leg ------------------------------------------------------
+# The memory stick is this core's save data (chimera docs/save-data.md), and
+# the savedata guest ABI group is the user's way out. makedata.prx creates a
+# savedata directory through the sceUtility dialog and then cleans it up; at
+# frame 20 - a pinned count, deterministic in both builds - the files exist,
+# so the export must contain them, and native, sandbox and rerecord exports
+# must be byte-identical trees.
+sd="$here/../extern/ppsspp/pspautotests/tests/utility/savedata/makedata.prx"
+if [ -f "$sd" ]; then
+	sdir="$here/../extern/ppsspp/pspautotests/.gate-savedata"
+	rm -rf "$sdir"
+	mkdir -p "$sdir"
+	"$here/bin/run-native" "$sd" --gate --frames 20 --savedata-out "$sdir/native" >/dev/null 2>&1
+	timeout 600 "$here/bin/run-wbx" "$here/bin/core.wbx" "$sd" 20 --axes-via-export --savedata-out "$sdir/box" >/dev/null 2>&1
+	timeout 900 "$here/bin/run-wbx" "$here/bin/core.wbx" "$sd" 20 --rerecord --axes-via-export --savedata-out "$sdir/rr" >/dev/null 2>&1
+	nfiles="$(find "$sdir/native" -type f 2>/dev/null | wc -l)"
+	if [ "$nfiles" -eq 0 ]; then
+		echo "FAIL savedata (the machine wrote no save data to export)"; fail=1
+	elif ! diff -r "$sdir/native" "$sdir/box" >/dev/null 2>&1; then
+		echo "FAIL savedata (native vs sandbox export trees differ)"
+		diff -r "$sdir/native" "$sdir/box" 2>&1 | head -10
+		fail=1
+	elif ! diff -r "$sdir/box" "$sdir/rr" >/dev/null 2>&1; then
+		echo "FAIL savedata (rerecord export tree differs)"
+		diff -r "$sdir/box" "$sdir/rr" 2>&1 | head -10
+		fail=1
+	else
+		echo "PASS savedata (makedata.prx, $nfiles files, native==sandbox==rerecord trees)"
+	fi
+	rm -rf "$sdir"
+fi
+
 exit $fail

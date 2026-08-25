@@ -61,8 +61,9 @@ Three prior bodies of work exist (see README for links):
 - **Memory stick** (savedata, PSP/SYSTEM): must be guest-memory-resident (writable
   mounted files block savestates). Implement an in-memory `IFileSystem`
   (std::map-backed tree) registered in place of `DirectoryFileSystem`. It is savestated
-  automatically because it lives in guest RAM. Persistent-data ABI ships it out as the
-  core's persistent payload (bundle: "memstick").
+  automatically because it lives in guest RAM. The savedata export group
+  (GetSaveDataFileCount/Name/Size/Buffer, chimera docs/save-data.md) is the user's way
+  out: Emulator > Export Save Data enumerates the tree as (path, bytes).
 - **Time**: the box clock is a CONSTANT (`clock_gettime` = 1495889068.0s always);
   `nanosleep`/`clock_nanosleep` are yields. Anything in PPSSPP that waits for real time
   to advance will spin/hang. CoreTiming is virtual (safe). Patch `time_now_d()` and
@@ -126,11 +127,13 @@ Three prior bodies of work exist (see README for links):
             case-insensitive FAT-ish tree; savedata makedata/autosave/filelist
             pass and GATE green at 900 frames (savedata written in guest
             memory, captured by machine savestates). (2026-08-24)
-      - [x] persistent-data ABI: GetPersistent*/PutPersistent export/import
-            the memstick tree ("ChimMS01" flat stream, sorted, deterministic;
-            id "memstick", label "Memory Stick"). The card store is
-            process-global like a physical stick (survives PSP_Shutdown).
-            Round-trips byte-identically through the sandbox. (2026-08-24)
+      - [x] savedata export group (replaced the removed persistent-data ABI,
+            2026-08-25): GetSaveDataFileCount/Name/Size/Buffer walk the
+            memstick tree, relative original-case paths, deterministic map
+            order. The card store is process-global like a physical stick
+            (survives PSP_Shutdown). Gate legs prove native, sandbox,
+            rerecord and engine (chimera-run --export-savedata) produce
+            byte-identical trees (makedata.prx, pinned frame 20).
       - [ ] real game content (.iso/.pbp) - none on this machine; needs the
             user's files. ISO path (ISOFileSystem over one FileLoader) is
             architecturally exercised but untested with a real image.

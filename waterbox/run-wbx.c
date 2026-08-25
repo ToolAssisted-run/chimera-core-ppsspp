@@ -13,6 +13,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#endif
+
 static uint64_t fnv(uint64_t h, const void *p, size_t n)
 {
 	const uint8_t *b = (const uint8_t *)p;
@@ -101,6 +107,7 @@ typedef uintptr_t (MB_GUEST_ABI *ptrfn_i)(int);
 typedef int (MB_GUEST_ABI *intfn_i)(int);
 typedef int64_t (MB_GUEST_ABI *i64fn_i)(int);
 
+
 static uintptr_t proc(mb_host *h, const char *n)
 {
 	mb_return r; wbx_get_proc_addr(h, n, &r);
@@ -109,9 +116,50 @@ static uintptr_t proc(mb_host *h, const char *n)
 	return r.data;
 }
 
+/* mkdir -p for a path's parent directories (export names are relative and
+ * clean by construction) */
+static void makeParentDirs(const char *path)
+{
+	char dir[1024];
+	for (size_t i = 1; path[i] && i + 1 < sizeof dir; i++) {
+		if (path[i] != '/') continue;
+		memcpy(dir, path, i); dir[i] = 0;
+#ifdef _WIN32
+		_mkdir(dir);
+#else
+		mkdir(dir, 0777);
+#endif
+	}
+}
+
+/* --savedata-out: walk the savedata guest ABI group exactly as the frontend
+ * does (snapshot, then per-file name/size/buffer) and write the tree under
+ * the given directory for the gate to diff against run-native's. */
+static int exportSaveData(mb_host *h, const char *dir)
+{
+	intfn Count = (intfn)proc(h, "GetSaveDataFileCount");
+	ptrfn_i Name = (ptrfn_i)proc(h, "GetSaveDataFileName");
+	i64fn_i Size = (i64fn_i)proc(h, "GetSaveDataFileSize");
+	ptrfn_i Buffer = (ptrfn_i)proc(h, "GetSaveDataFileBuffer");
+	int n = Count();
+	for (int i = 0; i < n; i++) {
+		char path[1024];
+		snprintf(path, sizeof path, "%s/%s", dir, (const char *)Name(i));
+		makeParentDirs(path);
+		FILE *f = fopen(path, "wb");
+		if (!f) { fprintf(stderr, "could not write %s\n", path); return 0; }
+		int64_t size = Size(i);
+		int ok = size == 0 || fwrite((const void *)Buffer(i), 1, (size_t)size, f) == (size_t)size;
+		fclose(f);
+		if (!ok) { fprintf(stderr, "could not write %s\n", path); return 0; }
+	}
+	printf("savedata=%d\n", n);
+	return 1;
+}
+
 int main(int argc, char **argv)
 {
-	const char *wbxPath = 0, *romPath = 0, *moviePath = 0, *settingsPath = 0, *ramOut = 0;
+	const char *wbxPath = 0, *romPath = 0, *moviePath = 0, *settingsPath = 0, *ramOut = 0, *savedataOut = 0;
 	long frames = 60; int rerecord = 0, blank = 0, plainrom = 0, rewind = 0, axesViaExport = 0;
 	/* extra mounted files, the frontend's firmware channel shape: id=path */
 	const char *fw[24]; int fwCount = 0;
@@ -124,6 +172,7 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--settings") && i + 1 < argc) settingsPath = argv[++i];
 		else if (!strcmp(argv[i], "--firmware") && i + 1 < argc) { if (fwCount < 24) fw[fwCount++] = argv[++i]; }
 		else if (!strcmp(argv[i], "--ram-out") && i + 1 < argc) ramOut = argv[++i];
+		else if (!strcmp(argv[i], "--savedata-out") && i + 1 < argc) savedataOut = argv[++i];
 		else if (!strcmp(argv[i], "--blank")) blank = 1;
 		else if (!wbxPath) wbxPath = argv[i];
 		else if (!romPath) romPath = argv[i];
@@ -310,6 +359,12 @@ int main(int argc, char **argv)
 			fwrite((const void *)GetMemoryDomainPtr(0), 1, (size_t)GetMemoryDomainSize(0), f);
 			fclose(f);
 		}
+	}
+
+	if (savedataOut && !exportSaveData(h, savedataOut)) {
+		wbx_deactivate_host(h, &r); wbx_destroy_host(h, &r);
+		free(st.b);
+		return 1;
 	}
 
 	wbx_deactivate_host(h, &r); wbx_destroy_host(h, &r);

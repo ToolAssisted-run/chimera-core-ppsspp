@@ -390,3 +390,52 @@ std::shared_ptr<IFileSystem> Chimera_CreateRamMemstick(IHandleAllocator *hAlloc)
 	return std::make_shared<RamFileSystem>(hAlloc);
 }
 
+// ---- savedata export (see ram-filesystem.h) --------------------------------
+// The snapshot pairs each file's display path (leading '/' stripped: the
+// export names are relative) with its node. Node pointers into g_nodes stay
+// valid while nothing runs, and the host only calls this between frames.
+
+namespace {
+
+struct ExportEntry {
+	std::string name;
+	const Node *node;
+};
+std::vector<ExportEntry> g_exportSnapshot;
+
+}  // namespace
+
+int32_t Chimera_MemstickExportCount() {
+	g_exportSnapshot.clear();
+	// std::map iterates in key order, so the listing is deterministic.
+	for (auto &kv : g_nodes) {
+		if (kv.second.isDirectory)
+			continue;
+		const std::string &p = kv.second.displayPath;
+		g_exportSnapshot.push_back({ p.substr(p.front() == '/' ? 1 : 0), &kv.second });
+	}
+	return (int32_t)g_exportSnapshot.size();
+}
+
+const char *Chimera_MemstickExportName(int32_t index) {
+	if (index < 0 || (size_t)index >= g_exportSnapshot.size())
+		return nullptr;
+	return g_exportSnapshot[(size_t)index].name.c_str();
+}
+
+int64_t Chimera_MemstickExportSize(int32_t index) {
+	if (index < 0 || (size_t)index >= g_exportSnapshot.size())
+		return 0;
+	return (int64_t)g_exportSnapshot[(size_t)index].node->data.size();
+}
+
+const uint8_t *Chimera_MemstickExportData(int32_t index) {
+	if (index < 0 || (size_t)index >= g_exportSnapshot.size())
+		return nullptr;
+	// An empty file has no buffer; hand back a stable non-null byte so a
+	// zero-length read loop still distinguishes "empty" from "gone".
+	static const uint8_t empty = 0;
+	const auto &data = g_exportSnapshot[(size_t)index].node->data;
+	return data.empty() ? &empty : data.data();
+}
+

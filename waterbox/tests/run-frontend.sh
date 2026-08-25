@@ -178,6 +178,38 @@ else
 	report "fontlist:firmware" SKIP "fontlist.prx missing"
 fi
 
+# --- the savedata export must survive the whole pipeline ---
+# makedata.prx writes savedata files through the sceUtility dialog; at the
+# pinned frame 20 they exist (see ../run-gate.sh's savedata leg). Exporting
+# through the ENGINE (chimera-run --export-savedata: the same
+# ce_session_savedata_* calls the Export Save Data menu item makes) must
+# produce the identical tree to the standalone sandbox runner.
+sd="$wb/../extern/ppsspp/pspautotests/tests/utility/savedata/makedata.prx"
+crun="$chimera_root/build/meson-linux/chimera-run"
+if [ ! -f "$sd" ]; then
+	report "savedata:engine" SKIP "makedata.prx missing"
+elif [ ! -x "$crun" ]; then
+	report "savedata:engine" SKIP "chimera-run not built"
+else
+	rm -rf "$work/sd.engine" "$work/sd.box"
+	python3 -c "open('$work/sd.movie.txt','w').write(('||    0,    0,............|'+chr(10))*20)"
+	( cd "$chimera_root" && LD_LIBRARY_PATH="$chimera_root/build/dll" timeout 600 "$crun" \
+		"$package" "$sd" "$work/sd.movie.txt" --export-savedata "$work/sd.engine" ) \
+		> "$work/sd.engine.log" 2>&1
+	# run-wbx resolves its own libminiboxhost; the frontend's dll dir must not
+	# shadow it through the LD_LIBRARY_PATH this script exports
+	LD_LIBRARY_PATH="" timeout 600 "$wb/bin/run-wbx" "$wb/bin/core.wbx" "$sd" 20 --plain-rom \
+		--savedata-out "$work/sd.box" > "$work/sd.box.log" 2>&1
+	nfiles="$(find "$work/sd.engine" -type f 2>/dev/null | wc -l)"
+	if [ "$nfiles" -eq 0 ]; then
+		report "savedata:engine" FAIL "engine exported no files (see tests/work/sd.engine.log)"
+	elif diff -r "$work/sd.engine" "$work/sd.box" >/dev/null 2>&1; then
+		report "savedata:engine" PASS "$nfiles files, engine export tree == sandbox runner tree"
+	else
+		report "savedata:engine" FAIL "engine vs sandbox export trees differ"
+	fi
+fi
+
 echo
 echo "$ok ok, $failed failed"
 [ "$failed" -eq 0 ]

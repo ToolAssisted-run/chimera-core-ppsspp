@@ -182,4 +182,15 @@ ECL_EXPORT int64_t GetMemoryDomainSize(int i)
 }
 ECL_EXPORT int GetMemoryDomainWritable(int i) { return i >= 0 && i < 3; }
 
+// ---- savedata export (the sixth optional guest ABI group) ----
+// The memory stick is this core's save data (docs/save-data.md): the RAM
+// memstick tree lives in guest memory, so savestates already carry it, and
+// this group is the user's way OUT. The list is dynamic; the host snapshots
+// via Count and reads the buffers directly at a frame boundary.
+
+ECL_EXPORT int32_t GetSaveDataFileCount(void) { return Chimera_MemstickExportCount(); }
+ECL_EXPORT const char *GetSaveDataFileName(int32_t i) { return Chimera_MemstickExportName(i); }
+ECL_EXPORT int64_t GetSaveDataFileSize(int32_t i) { return Chimera_MemstickExportSize(i); }
+ECL_EXPORT const uint8_t *GetSaveDataFileBuffer(int32_t i) { return Chimera_MemstickExportData(i); }
+
 }  // extern "C"

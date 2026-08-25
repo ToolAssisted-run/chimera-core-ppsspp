@@ -11,6 +11,12 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#endif
+
 #include "memory-assets.h"
 #include "psp-driver.h"
 #include "ram-filesystem.h"
@@ -67,6 +73,45 @@ static uint64_t fnv1a(const void *data, size_t len, uint64_t h = 146959810393466
 	return h;
 }
 
+// mkdir -p for a path's parent directories (export names are relative and
+// clean by construction, so walking forward is safe)
+static void makeParentDirs(const std::string &path) {
+	for (size_t i = 1; i < path.size(); i++) {
+		if (path[i] != '/')
+			continue;
+		std::string dir = path.substr(0, i);
+#ifdef _WIN32
+		_mkdir(dir.c_str());
+#else
+		mkdir(dir.c_str(), 0777);
+#endif
+	}
+}
+
+// --savedata-out: the memstick tree, written file by file - what the frontend
+// zips through the savedata group, flattened for the gate to diff.
+static bool exportSaveData(const char *dir) {
+	int32_t n = Chimera_MemstickExportCount();
+	for (int32_t i = 0; i < n; i++) {
+		std::string path = std::string(dir) + "/" + Chimera_MemstickExportName(i);
+		makeParentDirs(path);
+		FILE *f = fopen(path.c_str(), "wb");
+		if (!f) {
+			fprintf(stderr, "could not write %s\n", path.c_str());
+			return false;
+		}
+		int64_t size = Chimera_MemstickExportSize(i);
+		bool ok = size == 0 || fwrite(Chimera_MemstickExportData(i), 1, (size_t)size, f) == (size_t)size;
+		fclose(f);
+		if (!ok) {
+			fprintf(stderr, "could not write %s\n", path.c_str());
+			return false;
+		}
+	}
+	printf("savedata=%d\n", n);
+	return true;
+}
+
 static bool writeTga(const char *path, const uint32_t *bgra, int w, int h) {
 	FILE *f = fopen(path, "wb");
 	if (!f)
@@ -92,6 +137,7 @@ int main(int argc, char **argv) {
 	const char *fontDir = nullptr;
 	const char *sliceOut = nullptr;
 	const char *moviePath = nullptr;
+	const char *savedataOut = nullptr;
 	int pspModel = 1;
 	int cpuCore = 2;
 	const char *rtcBase = nullptr;
@@ -117,6 +163,7 @@ int main(int argc, char **argv) {
 			cpuCore = !strcmp(argv[i], "jit") ? 1 : !strcmp(argv[i], "interpreter") ? 0 : 2;
 		}
 		else if (!strcmp(argv[i], "--font-dir") && i + 1 < argc) fontDir = argv[++i];
+		else if (!strcmp(argv[i], "--savedata-out") && i + 1 < argc) savedataOut = argv[++i];
 		else if (!strcmp(argv[i], "--dump-video") && i + 1 < argc) dumpPrefix = argv[++i];
 		else if (!strcmp(argv[i], "--ram-slice") && i + 3 < argc) {
 			sliceOff = strtoul(argv[++i], nullptr, 0);
@@ -236,6 +283,11 @@ int main(int argc, char **argv) {
 				break;
 			printf("domain[%s]=%016llx\n", dn, (unsigned long long)fnv1a(dd, ds));
 		}
+	}
+
+	if (savedataOut && !exportSaveData(savedataOut)) {
+		pspdrv_shutdown();
+		return 1;
 	}
 
 	if (sliceOut) {
