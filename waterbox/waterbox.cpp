@@ -54,7 +54,7 @@ ECL_EXPORT int Init(void)
 	cfg.memstickDir = "";   // TODO(M4): RAM memory stick filesystem
 	cfg.cpuCore = 2;        // IR interpreter
 	cfg.threads = 2;
-	cfg.verboseLog = true;
+	cfg.verboseLog = false;
 	cfg.collectDebugOutput = false;
 
 	std::string err;

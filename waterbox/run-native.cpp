@@ -14,6 +14,49 @@
 #include "psp-driver.h"
 #include "ram-filesystem.h"
 
+// One line of a jaffar .sol movie: "||  lx,  ly,UDLRSsQTCXlr|" where the 12
+// letter positions are Up Down Left Right Start Select Square Triangle Circle
+// Cross LTrigger RTrigger (the old BizHawk PSP port's order) and a '.' means
+// released. Returns the chimera packed-input word.
+static bool parseSolLine(const char *line, uint64_t *packed) {
+	if (line[0] != '|' || line[1] != '|')
+		return false;
+	int lx = 0, ly = 0, n = 0;
+	if (sscanf(line + 2, " %d , %d ,%n", &lx, &ly, &n) < 2 || n == 0)
+		return false;
+	const char *b = line + 2 + n;
+	// .sol order -> packed bit (Up..Right 0..3, Cross 4, Circle 5, Square 6,
+	// Triangle 7, Start 8, Select 9, L 10, R 11)
+	static const int kBit[12] = { 0, 1, 2, 3, 8, 9, 6, 7, 5, 4, 10, 11 };
+	uint64_t p = 0;
+	for (int i = 0; i < 12 && b[i] && b[i] != '|'; i++)
+		if (b[i] != '.')
+			p |= 1ull << kBit[i];
+	if (lx < -128) lx = -128;
+	if (lx > 127) lx = 127;
+	if (ly < -128) ly = -128;
+	if (ly > 127) ly = 127;
+	p |= ((uint64_t)(uint8_t)(lx + 128)) << 16;
+	p |= ((uint64_t)(uint8_t)(ly + 128)) << 24;
+	*packed = p;
+	return true;
+}
+
+static std::vector<uint64_t> loadMovie(const char *path) {
+	std::vector<uint64_t> frames;
+	FILE *f = fopen(path, "rb");
+	if (!f)
+		return frames;
+	char line[256];
+	while (fgets(line, sizeof line, f)) {
+		uint64_t p;
+		if (parseSolLine(line, &p))
+			frames.push_back(p);
+	}
+	fclose(f);
+	return frames;
+}
+
 static uint64_t fnv1a(const void *data, size_t len, uint64_t h = 1469598103934665603ULL) {
 	const uint8_t *p = (const uint8_t *)data;
 	for (size_t i = 0; i < len; i++) {
@@ -46,6 +89,7 @@ int main(int argc, char **argv) {
 	const char *root = nullptr;
 	const char *dumpPrefix = nullptr;
 	const char *sliceOut = nullptr;
+	const char *moviePath = nullptr;
 	unsigned long sliceOff = 0, sliceLen = 0;
 	int frames = 60;
 	bool autotest = false, verbose = false, gate = false;
@@ -54,6 +98,7 @@ int main(int argc, char **argv) {
 		if (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--autotest")) autotest = true;
 		else if (!strcmp(argv[i], "--gate")) gate = true;
+		else if (!strcmp(argv[i], "--movie") && i + 1 < argc) moviePath = argv[++i];
 		else if (!strcmp(argv[i], "--verbose")) verbose = true;
 		else if (!strcmp(argv[i], "--assets") && i + 1 < argc) assets = argv[++i];
 		else if (!strcmp(argv[i], "--memstick") && i + 1 < argc) memstick = argv[++i];
@@ -80,6 +125,17 @@ int main(int argc, char **argv) {
 	cfg.mountRoot = root ? root : "";
 	cfg.collectDebugOutput = autotest;
 
+	std::vector<uint64_t> movie;
+	if (moviePath) {
+		movie = loadMovie(moviePath);
+		if (movie.empty()) {
+			fprintf(stderr, "no frames parsed from %s\n", moviePath);
+			return 1;
+		}
+		if (frames == 60)
+			frames = (int)movie.size();
+	}
+
 	std::string err;
 	if (!pspdrv_boot(cfg, &err)) {
 		fprintf(stderr, "boot failed: %s\n", err.c_str());
@@ -92,7 +148,10 @@ int main(int argc, char **argv) {
 	uint64_t gateV = 0, gateA = 0;
 	PspDrvInput input;
 	for (int i = 0; i < frames; i++) {
-		if (gate) {
+		if (moviePath) {
+			uint64_t p = (size_t)i < movie.size() ? movie[i] : (0x80ull << 16) | (0x80ull << 24);
+			input = pspdrv_input_from_packed(p);
+		} else if (gate) {
 			// run-wbx's padForFrame, verbatim
 			uint64_t x = (uint64_t)i * 6364136223846793005ULL + 1442695040888963407ULL;
 			x ^= x >> 33;

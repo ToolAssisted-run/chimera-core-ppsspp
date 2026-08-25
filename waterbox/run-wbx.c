@@ -44,6 +44,46 @@ static intptr_t mem_read(uintptr_t ud, uint8_t *d, uintptr_t n)
 	memcpy(d, m->b + m->pos, n); m->pos += n; return (intptr_t)n;
 }
 
+/* One line of a jaffar .sol movie; must parse EXACTLY like run-native.cpp's
+ * parseSolLine (the gate compares the two replays). */
+static int parseSolLine(const char *line, uint64_t *packed)
+{
+	if (line[0] != '|' || line[1] != '|') return 0;
+	int lx = 0, ly = 0, n = 0;
+	if (sscanf(line + 2, " %d , %d ,%n", &lx, &ly, &n) < 2 || n == 0) return 0;
+	const char *b = line + 2 + n;
+	static const int kBit[12] = { 0, 1, 2, 3, 8, 9, 6, 7, 5, 4, 10, 11 };
+	uint64_t p = 0;
+	int i;
+	for (i = 0; i < 12 && b[i] && b[i] != '|'; i++)
+		if (b[i] != '.') p |= 1ull << kBit[i];
+	if (lx < -128) lx = -128;
+	if (lx > 127) lx = 127;
+	if (ly < -128) ly = -128;
+	if (ly > 127) ly = 127;
+	p |= ((uint64_t)(uint8_t)(lx + 128)) << 16;
+	p |= ((uint64_t)(uint8_t)(ly + 128)) << 24;
+	*packed = p;
+	return 1;
+}
+
+static uint64_t *loadMovie(const char *path, long *count)
+{
+	FILE *f = fopen(path, "rb");
+	if (!f) return 0;
+	uint64_t *frames = 0; long n = 0, cap = 0;
+	char line[256];
+	while (fgets(line, sizeof line, f)) {
+		uint64_t p;
+		if (!parseSolLine(line, &p)) continue;
+		if (n == cap) { cap = cap ? cap * 2 : 1024; frames = realloc(frames, cap * sizeof *frames); }
+		frames[n++] = p;
+	}
+	fclose(f);
+	*count = n;
+	return frames;
+}
+
 /* deterministic per-frame input, matching run-native's --pattern mode:
  * 12 button bits + centered sticks */
 static uint64_t padForFrame(long frame)
@@ -70,7 +110,7 @@ static uintptr_t proc(mb_host *h, const char *n)
 
 int main(int argc, char **argv)
 {
-	const char *wbxPath = 0, *romPath = 0, *sramOut = 0, *sramIn = 0;
+	const char *wbxPath = 0, *romPath = 0, *sramOut = 0, *sramIn = 0, *moviePath = 0;
 	long frames = 60; int rerecord = 0, blank = 0, plainrom = 0, rewind = 0;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--rerecord")) rerecord = 1;
@@ -78,12 +118,20 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--plain-rom")) plainrom = 1;
 		else if (!strcmp(argv[i], "--saveram-out") && i + 1 < argc) sramOut = argv[++i];
 		else if (!strcmp(argv[i], "--saveram-in") && i + 1 < argc) sramIn = argv[++i];
+		else if (!strcmp(argv[i], "--movie") && i + 1 < argc) moviePath = argv[++i];
 		else if (!strcmp(argv[i], "--blank")) blank = 1;
 		else if (!wbxPath) wbxPath = argv[i];
 		else if (!romPath) romPath = argv[i];
 		else frames = strtol(argv[i], 0, 0);
 	}
 	if (!wbxPath || !romPath) { fprintf(stderr, "usage: run-wbx <core.wbx> <game> <frames> [--rerecord] [--blank]\n"); return 2; }
+
+	uint64_t *movie = 0; long movieLen = 0;
+	if (moviePath) {
+		movie = loadMovie(moviePath, &movieLen);
+		if (!movie || movieLen == 0) { fprintf(stderr, "no frames parsed from %s\n", moviePath); return 1; }
+		if (frames == 60) frames = movieLen;
+	}
 
 	FILE *rf = fopen(romPath, "rb");
 	if (!rf) { fprintf(stderr, "cannot open %s\n", romPath); return 1; }
@@ -168,13 +216,13 @@ int main(int argc, char **argv)
 	if (rewind) {
 		long half = frames / 2;
 		for (long f = 0; f < half; f++)
-			FrameAdvance(blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
+			FrameAdvance(movie ? (f < movieLen ? movie[f] : (0x80ull << 16) | (0x80ull << 24)) : blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
 		st.len = 0;
 		wbx_save_state(h, mem_write, (uintptr_t)&st, &r);
 		if (r.error_message[0]) { fprintf(stderr, "rewind save: %s\n", r.error_message); return 1; }
 		uint64_t v1 = 0, a1 = 0, v2 = 0, a2 = 0;
 		for (long f = half; f < frames; f++) {
-			FrameAdvance(blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
+			FrameAdvance(movie ? (f < movieLen ? movie[f] : (0x80ull << 16) | (0x80ull << 24)) : blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
 			v1 = fnv(v1, (const void *)GetVideoBgra(), 480 * 272 * 4);
 			a1 = fnv(a1, (const void *)GetAudio(), (size_t)GetAudioSampleCount() * 4);
 		}
@@ -182,7 +230,7 @@ int main(int argc, char **argv)
 		wbx_load_state(h, mem_read, (uintptr_t)&st, &r);
 		if (r.error_message[0]) { fprintf(stderr, "rewind load: %s\n", r.error_message); return 1; }
 		for (long f = half; f < frames; f++) {
-			FrameAdvance(blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
+			FrameAdvance(movie ? (f < movieLen ? movie[f] : (0x80ull << 16) | (0x80ull << 24)) : blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
 			v2 = fnv(v2, (const void *)GetVideoBgra(), 480 * 272 * 4);
 			a2 = fnv(a2, (const void *)GetAudio(), (size_t)GetAudioSampleCount() * 4);
 		}
@@ -201,7 +249,7 @@ int main(int argc, char **argv)
 			wbx_load_state(h, mem_read, (uintptr_t)&st, &r);
 			if (r.error_message[0]) { fprintf(stderr, "rerecord: %s\n", r.error_message); return 1; }
 		}
-		FrameAdvance(blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
+		FrameAdvance(movie ? ((size_t)f < (size_t)movieLen ? movie[f] : (0x80ull << 16) | (0x80ull << 24)) : blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
 		vh = fnv(vh, (const void *)GetVideoBgra(), 480 * 272 * 4);
 		ah = fnv(ah, (const void *)GetAudio(), (size_t)GetAudioSampleCount() * 4);
 	}

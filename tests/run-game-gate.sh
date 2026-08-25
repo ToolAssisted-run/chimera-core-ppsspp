@@ -1,0 +1,53 @@
+#!/bin/sh
+# The real-game gate: replay an input movie (jaffar .sol) over a game image
+# through the native build and through the sandbox, requiring identical
+# video/audio/memory digests; then once more with the whole machine
+# round-tripped through save/load state around EVERY frame.
+#
+# Game images are not distributable, so this runs only where one exists
+# (tests/roms/ is gitignored). Defaults to the Beta Bloc movie.
+#
+# Usage: ./run-game-gate.sh [game.iso movie.sol]
+set -u
+here="$(cd "$(dirname "$0")" && pwd)"
+wb="$here/../waterbox"
+
+iso="${1:-$here/roms/Beta Bloc (USA) (PSP) (PSN).iso}"
+sol="${2:-$here/betabloc.sol}"
+
+[ -f "$iso" ] || { echo "SKIP: no game image at $iso"; exit 0; }
+[ -f "$sol" ] || { echo "no movie at $sol" >&2; exit 1; }
+[ -x "$wb/bin/run-native" ] || { echo "build the native reference first (make -f native.mk native)" >&2; exit 1; }
+[ -f "$wb/bin/core.wbx" ] || { echo "build the core first (./build-core.sh)" >&2; exit 1; }
+
+work="$here/work"
+mkdir -p "$work"
+
+filter() { grep -E '^(videoHash|audioHash|domain\[)'; }
+
+echo "replaying $(basename "$sol") ($(grep -c '^||' "$sol") frames) over $(basename "$iso")..."
+"$wb/bin/run-native" "$iso" --movie "$sol" --gate 2>/dev/null | filter > "$work/game.native.txt" &
+native_pid=$!
+timeout 3600 "$wb/bin/run-wbx" "$wb/bin/core.wbx" "$iso" --movie "$sol" 2>/dev/null | filter > "$work/game.box.txt"
+wait "$native_pid"
+
+if [ ! -s "$work/game.native.txt" ] || [ ! -s "$work/game.box.txt" ]; then
+	echo "FAIL: a run produced no digests"; exit 1
+fi
+if ! cmp -s "$work/game.native.txt" "$work/game.box.txt"; then
+	echo "FAIL: native vs sandbox"
+	echo "--- native"; cat "$work/game.native.txt"
+	echo "--- sandbox"; cat "$work/game.box.txt"
+	exit 1
+fi
+echo "native == sandbox"
+
+timeout 7200 "$wb/bin/run-wbx" "$wb/bin/core.wbx" "$iso" --movie "$sol" --rerecord 2>/dev/null | filter > "$work/game.rr.txt"
+if ! cmp -s "$work/game.box.txt" "$work/game.rr.txt"; then
+	echo "FAIL: rerecord diverges"
+	echo "--- plain"; cat "$work/game.box.txt"
+	echo "--- rerecord"; cat "$work/game.rr.txt"
+	exit 1
+fi
+echo "rerecord identical"
+echo "PASS: $(basename "$iso") over $(basename "$sol")"
