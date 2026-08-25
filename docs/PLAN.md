@@ -262,7 +262,14 @@ they get no declaration; zh_gb.pgf is NOT in the firmware at all (a real
 console's Chinese font is the gb3s1518 bitmap), which settles it as
 game-shipped and unpinned. A dump from an older firmware revision is used
 and recorded, just reported as unrecognised; add its hashes here to label
-it ok. Verified with the real fonts: all 18 mounted at once (jpn0 is
+it ok. Since 2026-08-25 the frontend also uses a font that is not the
+declared size at all (chimera 7023db5: a declaration says what a core
+expects, not what the user may supply), so a user's own replacement font
+loads over any of these, is flagged custom in the Firmware window and in
+an on-screen warning at load, and has its hash recorded in the movie -
+which is what makes such a machine reproducible. Proven end to end: a
+38236-byte file against a 999999-byte declaration reaches sceFont and
+changes the machine. Verified with the real fonts: all 18 mounted at once (jpn0 is
 1.5MB) run native==sandbox==rerecord, and the Chimera frontend boots the
 machine with all 18 provisioned through the Firmware store. The wrong-size refusal is
 gate-checked by hand (frontend refuses a 38236-byte ltn0.pgf, machine
