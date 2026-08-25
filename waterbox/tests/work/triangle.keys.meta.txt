@@ -1,5 +1,0 @@
-status=OK
-detail=
-frames=1
-lag=0
-ramsize=67108864

@@ -1,8 +1,0 @@
-parsing command-line flags: --headless --config=/home/jaffar/chimera-core-ppsspp/waterbox/tests/work/config.triangle.model.ini --core=/home/jaffar/chimera/build/Cores/ppsspp.zip --lua=/home/jaffar/chimera-core-ppsspp/waterbox/tests/frontend-ram.lua /home/jaffar/chimera-core-ppsspp/waterbox/../extern/ppsspp/pspautotests/tests/gpu/triangle/triangle.prx
-Gtk not found (missing LD_LIBRARY_PATH to libgtk-x11-2.0.so.0?), using built-in colorscheme
-libEGL warning: DRI3 error: Could not get DRI3 device
-libEGL warning: Ensure your X server supports DRI3 to get accelerated rendering
-Using SDL2 for host input (keyboard + gamepads)
-[ALSOFT] (EE) Could not query RTKit: No such file or directory (2)
-Chimera Commit 1470e21d1
-[Lua Console] loaded script /home/jaffar/chimera-core-ppsspp/waterbox/tests/frontend-ram.lua

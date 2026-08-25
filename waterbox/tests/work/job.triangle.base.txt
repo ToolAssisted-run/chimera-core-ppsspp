@@ -1,4 +1,0 @@
-frames=120
-out=/home/jaffar/chimera-core-ppsspp/waterbox/tests/work/triangle.base.ram.bin
-meta=/home/jaffar/chimera-core-ppsspp/waterbox/tests/work/triangle.base.meta.txt
-shot=/home/jaffar/chimera-core-ppsspp/waterbox/tests/work/triangle.base.png

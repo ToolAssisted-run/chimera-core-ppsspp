@@ -1,7 +1,9 @@
+build/
+*.o
+tests/work/
 waterbox/bin/
 waterbox/obj/
 waterbox/obj-guest/
 waterbox/obj-native/
-*.o
+waterbox/tests/work/
 *.wbx
-build/
