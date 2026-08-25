@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "memory-assets.h"
 #include "psp-driver.h"
 #include "ram-filesystem.h"
 
@@ -88,6 +89,7 @@ int main(int argc, char **argv) {
 	const char *memstick = nullptr;
 	const char *root = nullptr;
 	const char *dumpPrefix = nullptr;
+	const char *fontDir = nullptr;
 	const char *sliceOut = nullptr;
 	const char *moviePath = nullptr;
 	int pspModel = 1;
@@ -114,6 +116,7 @@ int main(int argc, char **argv) {
 			++i;
 			cpuCore = !strcmp(argv[i], "jit") ? 1 : !strcmp(argv[i], "interpreter") ? 0 : 2;
 		}
+		else if (!strcmp(argv[i], "--font-dir") && i + 1 < argc) fontDir = argv[++i];
 		else if (!strcmp(argv[i], "--dump-video") && i + 1 < argc) dumpPrefix = argv[++i];
 		else if (!strcmp(argv[i], "--ram-slice") && i + 3 < argc) {
 			sliceOff = strtoul(argv[++i], nullptr, 0);
@@ -141,6 +144,24 @@ int main(int argc, char **argv) {
 		if (t < 0) { fprintf(stderr, "bad --rtc-base (want YYYY-MM-DD HH:MM:SS)\n"); return 2; }
 		cfg.rtcBaseSeconds = t;
 	}
+	// User-provided system fonts, mirroring the firmware channel: any of the
+	// registry's file names present in the directory shadows the bundled one.
+	if (fontDir) {
+		for (int i = 0; i < pspdrv_font_file_count; i++) {
+			std::string path = std::string(fontDir) + "/" + pspdrv_font_files[i];
+			if (FILE *f = fopen(path.c_str(), "rb")) {
+				std::vector<uint8_t> bytes;
+				uint8_t chunk[65536];
+				size_t n;
+				while ((n = fread(chunk, 1, sizeof chunk, f)) > 0)
+					bytes.insert(bytes.end(), chunk, chunk + n);
+				fclose(f);
+				if (!bytes.empty())
+					Chimera_AddFontOverride(pspdrv_font_files[i], bytes.data(), bytes.size());
+			}
+		}
+	}
+
 	for (const char *kv : sets) {
 		std::string pair(kv);
 		size_t eq = pair.find('=');

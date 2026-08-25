@@ -81,4 +81,39 @@ if [ -f "$jt" ]; then
 	fi
 fi
 
+# ---- the fonts leg ---------------------------------------------------------
+# Real system fonts arrive through the firmware channel: the frontend mounts
+# each provided file under its font file name and the guest overlays it over
+# the bundled replacement. PPSSPP ships no zh_gb.pgf (its registry entry is
+# optional), so providing one grows sceFont's internal list, which
+# fontlist.prx prints - a machine-visible proof the mounted bytes were loaded.
+# Free content only: the "provided font" is a copy of the bundled ltn0.pgf.
+ft="$here/../extern/ppsspp/pspautotests/tests/font/fontlist.prx"
+if [ -f "$ft" ]; then
+	fdir="$here/../extern/ppsspp/pspautotests/.gate-fonts"
+	mkdir -p "$fdir"
+	cp "$here/../extern/ppsspp/assets/flash0/font/ltn0.pgf" "$fdir/zh_gb.pgf"
+	fbase="$("$here/bin/run-native" "$ft" --gate --frames "$frames" 2>/dev/null | grep '^domain\[RAM\]')"
+	fnat="$("$here/bin/run-native" "$ft" --gate --frames "$frames" --font-dir "$fdir" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	fbox="$(timeout 600 "$here/bin/run-wbx" "$here/bin/core.wbx" "$ft" "$frames" --axes-via-export --firmware "zh_gb.pgf=$fdir/zh_gb.pgf" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	frr="$(timeout 900 "$here/bin/run-wbx" "$here/bin/core.wbx" "$ft" "$frames" --rerecord --axes-via-export --firmware "zh_gb.pgf=$fdir/zh_gb.pgf" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	rm -rf "$fdir"
+	fnat_ram="$(printf '%s\n' "$fnat" | grep '^domain\[RAM\]')"
+	if [ -z "$fnat" ] || [ -z "$fbox" ]; then
+		echo "FAIL fonts (a run produced no digests)"; fail=1
+	elif [ "$fbase" = "$fnat_ram" ]; then
+		echo "FAIL fonts (provided font did not reach the machine)"; fail=1
+	elif [ "$fnat" != "$fbox" ]; then
+		echo "FAIL fonts (native vs sandbox with a provided font)"
+		echo "--- native"; echo "$fnat"; echo "--- sandbox"; echo "$fbox"
+		fail=1
+	elif [ "$fbox" != "$frr" ]; then
+		echo "FAIL fonts (rerecord diverges with a provided font)"
+		echo "--- plain"; echo "$fbox"; echo "--- rerecord"; echo "$frr"
+		fail=1
+	else
+		echo "PASS fonts (fontlist.prx, provided font shapes the machine, native==sandbox==rerecord)"
+	fi
+fi
+
 exit $fail

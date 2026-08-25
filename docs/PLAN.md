@@ -224,6 +224,29 @@ nonzero atlas pointer). The font tests that fail (fontinfo and friends) fail
 only because they open a sibling ltn0.pgf, i.e. the single-file boot note
 above, in both builds identically.
 
+Feature, 2026-08-25: real system fonts through the firmware channel. PPSSPP
+bundles free replacement fonts in flash0/font, but a real console's fonts
+(dumpable from flash0:/font, not distributable) have different glyphs and
+metrics - a different machine wherever a game reads text through sceFont.
+The package now declares all 19 registry font files (ltn0-15, jpn0, kr0,
+zh_gb) as optional firmware: the user points Emulator > Firmware at their
+dumps, the frontend mounts each under its file name, the guest adapter reads
+them once and hands them to a font overlay VFS backend registered ahead of
+the embedded assets, so sceFont's flash0:/font reads find the real bytes
+file by file. Sizes are deliberately not pinned (a legit dump from another
+firmware revision must not be refused); the movie header's Firmware line
+records id=SHA1 for every provided font, and playback warns on mismatch -
+the reproduction contract the frontend already applies to any firmware.
+PPGe (savedata dialog rendering) stays on the atlas: its alternative is a
+host-side rasterizer over host fonts, which is nondeterministic and does not
+read PGF; the dialogs are PPSSPP's own HLE artwork either way.
+Proof: run-gate.sh grew a fonts leg (a provided zh_gb.pgf - free bytes, a
+copy of bundled ltn0 - grows sceFont's internal list, fontlist.prx digests
+change, native==sandbox==rerecord with the override mounted), and
+run-frontend.sh grew a firmware leg (the same font provisioned through the
+CoreFirmware config reaches the guest; whole-RAM hash changes). Native
+parity via run-native --font-dir DIR; run-wbx mounts via --firmware id=path.
+
 ## Test content (no copyrighted ROMs)
 
 - pspautotests (upstream submodule; the `-g` "tests_good" set, ~314 tests, runs under

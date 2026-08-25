@@ -79,6 +79,14 @@ int64_t pspdrv_parse_datetime(const char *s);
 // run-native --gate, and run-wbx's documentation.
 PspDrvInput pspdrv_input_from_packed(uint64_t packed);
 
+// The flash0 font files sceFont's registry can consume, in registry order.
+// These are the ids the firmware channel declares (waterbox.config), the
+// mounted names the guest adapter probes, and the file names run-native
+// --font-dir looks for. A user-provided file shadows the bundled replacement
+// of the same name (see Chimera_AddFontOverride in memory-assets.h).
+extern const char *const pspdrv_font_files[];
+extern const int pspdrv_font_file_count;
+
 // Boots the machine. Returns false and fills *error on failure.
 bool pspdrv_boot(const PspDrvConfig &config, std::string *error);
 void pspdrv_shutdown();

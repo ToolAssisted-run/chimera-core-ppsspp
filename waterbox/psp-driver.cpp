@@ -183,6 +183,17 @@ extern "C" unsigned __default_stacksize;  // musl internal, one static link away
 // emulated RTC's base time. Set from the config before PSP_Init runs.
 extern "C" int64_t Chimera_RtcBaseSeconds = 1495889068;
 
+// Mirrors sceFont's fontRegistry (Core/HLE/sceFont.cpp): every flash0 font
+// file the HLE can load. zh_gb.pgf ships with certain games rather than any
+// console, but the registry reads it from flash0 too, so a user may supply it.
+const char *const pspdrv_font_files[] = {
+	"ltn0.pgf", "ltn1.pgf", "ltn2.pgf", "ltn3.pgf", "ltn4.pgf", "ltn5.pgf",
+	"ltn6.pgf", "ltn7.pgf", "ltn8.pgf", "ltn9.pgf", "ltn10.pgf", "ltn11.pgf",
+	"ltn12.pgf", "ltn13.pgf", "ltn14.pgf", "ltn15.pgf",
+	"jpn0.pgf", "kr0.pgf", "zh_gb.pgf",
+};
+const int pspdrv_font_file_count = (int)(sizeof(pspdrv_font_files) / sizeof(pspdrv_font_files[0]));
+
 static bool matchOption(const char *value, const char *const *options, int n, int *out) {
 	for (int i = 0; i < n; i++)
 		if (strcmp(value, options[i]) == 0) { *out = i; return true; }
@@ -345,6 +356,12 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	g_threadManager.Init(cfg.threads, cfg.threads);
 
 	g_display.Recalculate(480, 272, 1.0f, 1.0f, 1.0f);
+
+	// Real system fonts the user provided (the firmware channel) go in FIRST:
+	// the VFS answers from the first backend that has the name, so these
+	// shadow the bundled flash0/font replacements file by file.
+	if (Chimera_HasFontOverrides())
+		g_VFS.Register("", Chimera_CreateFontOverlayReader());
 
 	if (!cfg.assetsDir.empty())
 		g_VFS.Register("", new DirectoryReader(Path(cfg.assetsDir)));

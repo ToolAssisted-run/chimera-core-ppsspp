@@ -149,6 +149,35 @@ for rom in "${roms[@]}"; do
 	fi
 done
 
+# --- a provided system font must reach the guest through the Firmware store ---
+# The user points Emulator > Firmware at a real font dump; the frontend mounts
+# it under its declared id and sceFont loads it over the bundled replacement.
+# PPSSPP ships no zh_gb.pgf, so providing one grows the internal font list -
+# fontlist.prx prints that list, and the whole-RAM hash says it changed.
+# Free content only: the "dump" is a copy of the bundled ltn0.pgf.
+ft="$wb/../extern/ppsspp/pspautotests/tests/font/fontlist.prx"
+if [ -f "$ft" ]; then
+	rom="$ft"
+	cp "$wb/../extern/ppsspp/assets/flash0/font/ltn0.pgf" "$work/zh_gb.pgf"
+	settings_config "$work/config.fontbase.ini" '{}'
+	python3 "$here/settings-config.py" "$config" "$work/config.fontfw.ini" '{}' \
+		"{\"zh_gb.pgf\": \"$work/zh_gb.pgf\"}"
+	if run_frontend "fontbase" "$work/config.fontbase.ini" 120 \
+		&& run_frontend "fontfw" "$work/config.fontfw.ini" 120; then
+		h1="$(grep '^ramhash=' "$work/fontbase.meta.txt" | cut -d= -f2)"
+		h2="$(grep '^ramhash=' "$work/fontfw.meta.txt" | cut -d= -f2)"
+		if [ -n "$h1" ] && [ -n "$h2" ] && [ "$h1" != "$h2" ]; then
+			report "fontlist:firmware" PASS "a provided system font reached sceFont (RAM hash changed)"
+		else
+			report "fontlist:firmware" FAIL "RAM hash did not change (h1=$h1 h2=$h2)"
+		fi
+	else
+		report "fontlist:firmware" FAIL "a run did not report OK (see tests/work/font*.log)"
+	fi
+else
+	report "fontlist:firmware" SKIP "fontlist.prx missing"
+fi
+
 echo
 echo "$ok ok, $failed failed"
 [ "$failed" -eq 0 ]

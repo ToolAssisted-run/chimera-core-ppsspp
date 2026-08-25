@@ -113,6 +113,8 @@ int main(int argc, char **argv)
 {
 	const char *wbxPath = 0, *romPath = 0, *sramOut = 0, *sramIn = 0, *moviePath = 0, *settingsPath = 0, *ramOut = 0;
 	long frames = 60; int rerecord = 0, blank = 0, plainrom = 0, rewind = 0, axesViaExport = 0;
+	/* extra mounted files, the frontend's firmware channel shape: id=path */
+	const char *fw[24]; int fwCount = 0;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--rerecord")) rerecord = 1;
 		else if (!strcmp(argv[i], "--rewind")) rewind = 1;
@@ -122,6 +124,7 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--movie") && i + 1 < argc) moviePath = argv[++i];
 		else if (!strcmp(argv[i], "--axes-via-export")) axesViaExport = 1;
 		else if (!strcmp(argv[i], "--settings") && i + 1 < argc) settingsPath = argv[++i];
+		else if (!strcmp(argv[i], "--firmware") && i + 1 < argc) { if (fwCount < 24) fw[fwCount++] = argv[++i]; }
 		else if (!strcmp(argv[i], "--ram-out") && i + 1 < argc) ramOut = argv[++i];
 		else if (!strcmp(argv[i], "--blank")) blank = 1;
 		else if (!wbxPath) wbxPath = argv[i];
@@ -169,6 +172,20 @@ int main(int argc, char **argv)
 		memreader nr = { (const uint8_t *)vfsname, strlen(vfsname), 0 };
 		wbx_mount_file(h, "rom.name", mem_reader, (uintptr_t)&nr, false, &r);
 		if (r.error_message[0]) { fprintf(stderr, "mount rom.name: %s\n", r.error_message); return 1; }
+	}
+
+	/* firmware files, mounted under their declared ids exactly as the
+	 * frontend does (the PPSSPP package uses this for real system fonts) */
+	for (int i = 0; i < fwCount; i++) {
+		char id[128]; const char *eq = strchr(fw[i], '=');
+		if (!eq || eq == fw[i] || (size_t)(eq - fw[i]) >= sizeof id) { fprintf(stderr, "bad --firmware %s (want id=path)\n", fw[i]); return 2; }
+		memcpy(id, fw[i], eq - fw[i]); id[eq - fw[i]] = 0;
+		FILE *ff = fopen(eq + 1, "rb");
+		if (!ff) { fprintf(stderr, "cannot open %s\n", eq + 1); return 1; }
+		freader fwr = { ff };
+		wbx_mount_file(h, id, file_read, (uintptr_t)&fwr, false, &r);
+		if (r.error_message[0]) { fprintf(stderr, "mount %s: %s\n", id, r.error_message); return 1; }
+		fclose(ff);
 	}
 
 	/* the frontend always mounts "settings" (empty object when nothing was

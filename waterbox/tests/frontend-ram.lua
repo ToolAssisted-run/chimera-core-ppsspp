@@ -27,6 +27,7 @@ local function finish(status, detail)
 		"frames=" .. (meta.frames or 0),
 		"lag=" .. (meta.lag or 0),
 		"ramsize=" .. (meta.ramsize or 0),
+		"ramhash=" .. (meta.ramhash or ""),
 	}
 	if meta.metaPath then
 		writeAll(meta.metaPath, table.concat(lines, "\n") .. "\n")
@@ -67,6 +68,9 @@ meta.lag = emu.lagcount()
 pcall(function()
 	memory.usememorydomain("RAM")
 	meta.ramsize = memory.getcurrentmemorydomainsize()
+	-- the whole domain, for checks whose footprint is not in the fixed slice
+	-- (a provided system font grows sceFont's tables wherever they land)
+	meta.ramhash = memory.hash_region(0, meta.ramsize, "RAM")
 end)
 
 if job.shot ~= nil and job.shot ~= "" then

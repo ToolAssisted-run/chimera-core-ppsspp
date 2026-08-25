@@ -12,10 +12,12 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include <emulibc.h>
 #include <waterbox_settings.h>
 
+#include "memory-assets.h"
 #include "psp-driver.h"
 #include "ram-filesystem.h"
 
@@ -81,6 +83,24 @@ ECL_EXPORT int Init(void)
 		for (size_t i = 0; i < sizeof(kKeys) / sizeof(kKeys[0]); i++)
 			if (wbx_setting_str(kKeys[i], buf, sizeof buf) >= 0)
 				pspdrv_apply_setting(cfg, kKeys[i], buf);
+	}
+
+	// Real system fonts from the firmware channel: the frontend mounts each
+	// provided file under its declared id (the flash0 font file name). One
+	// open per mounted file is the VFS contract, so read each exactly once
+	// and hand the bytes to the font overlay, which shadows the bundled
+	// replacement of the same name.
+	for (int i = 0; i < pspdrv_font_file_count; i++) {
+		if (FILE *f = fopen(pspdrv_font_files[i], "rb")) {
+			std::vector<uint8_t> bytes;
+			uint8_t chunk[65536];
+			size_t n;
+			while ((n = fread(chunk, 1, sizeof chunk, f)) > 0)
+				bytes.insert(bytes.end(), chunk, chunk + n);
+			fclose(f);
+			if (!bytes.empty())
+				Chimera_AddFontOverride(pspdrv_font_files[i], bytes.data(), bytes.size());
+		}
 	}
 
 	std::string err;
