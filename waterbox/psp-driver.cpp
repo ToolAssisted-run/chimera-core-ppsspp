@@ -79,7 +79,11 @@ bool System_GetPropertyBool(SystemProperty prop) {
 	case SYSPROP_CAN_JIT:
 		return true;
 	case SYSPROP_SKIP_UI:
-		return true;
+		// Headless.cpp says true to skip the PPGe atlas load; we must not. The
+		// atlas is what draws the in-game savedata/utility dialogs, its texture
+		// lives in kernel RAM (machine-shaping), and a real console renders
+		// those dialogs. The atlas ships embedded, so loading it is free.
+		return false;
 	default:
 		return false;
 	}

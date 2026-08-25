@@ -209,6 +209,21 @@ mp3, font/*) no longer apply to this build's native sweep. Real games are
 single-file (.iso/.cso/.pbp) and unaffected. The correctness metrics are the
 gates, which are green.
 
+Fix, 2026-08-25: SYSPROP_SKIP_UI now answers false. The headless driver we
+started from says true, which makes __PPGeInit skip loading ppge_atlas.zim -
+so the embedded atlas was never read and every sceUtility dialog (savedata
+prompts included) would have rendered without text or graphics. With the flag
+off the atlas decodes from the embedded assets into a 2MB kernel-RAM texture
+at boot, which reshapes the machine; all gates re-proven green after the flip
+(core 6/6+JIT, Beta Bloc movie native==sandbox==rerecord with the run reaching
+the same on-screen states, frontend 3/3). Embedded-asset status, verified:
+vfpu LUTs load (gates would diverge without them), flash0 fonts load (the
+system-font autotests - fontlist, fontinfobyindex, resolution, find, optimum -
+pass and gate native==sandbox), atlas loads (savedata autotests pass with a
+nonzero atlas pointer). The font tests that fail (fontinfo and friends) fail
+only because they open a sibling ltn0.pgf, i.e. the single-file boot note
+above, in both builds identically.
+
 ## Test content (no copyrighted ROMs)
 
 - pspautotests (upstream submodule; the `-g` "tests_good" set, ~314 tests, runs under
