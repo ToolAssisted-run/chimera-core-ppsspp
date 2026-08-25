@@ -23,7 +23,7 @@ CXXINCS := -I$(SR)/include/c++/$(GCCVER) -I$(SR)/include/c++/$(GCCVER)/x86_64-li
 MBINCS  := -I$(MB)/extern/emulibc -I$(MB)/source/guest/include -I$(MB)/extern/jsmn
 
 WARN     := -Wno-deprecated-declarations
-CFLAGS   := $(WBFLAGS) $(DEFS) -DCHIMERA_GUEST $(PPINCS) $(MBINCS) $(WARN)
+CFLAGS   := $(WBFLAGS) $(DEFS) -DCHIMERA_GUEST $(PPINCS) -I$(O)/ffmpeg/include $(MBINCS) $(WARN)
 CXXFLAGS := $(CFLAGS) -std=c++20 -fexceptions $(CXXINCS)
 
 all: objs

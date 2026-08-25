@@ -165,10 +165,19 @@ Three prior bodies of work exist (see README for links):
             two CPU cores are different machines (digests differ), hence the
             sync setting. On Beta Bloc (softgpu-bound) JIT ~= interpreter at
             ~180fps; the win is CPU-heavy 3D games. (2026-08-25)
-      - [ ] ffmpeg for psmfplayer (viable: pinned source build into the image,
-            --disable-asm or forced CPU flags against SIMD dispatch,
-            single-threaded; lands as a new core version since it changes
-            machine behavior).
+      - [x] ffmpeg: PPSSPP's pinned fork built from source for BOTH flavors
+            (build-ffmpeg.sh: decode-only, --disable-asm,
+            --disable-runtime-cpudetect, --disable-pthreads), USE_FFMPEG on.
+            Beta Bloc's intro video DECODES (was black), and the movie stays
+            frame-identical in sync - the full game gate is green with video
+            and audio active. One real divergence surfaced and was fixed
+            properly: at3_standalone (and any float decoder) builds its DSP
+            tables with libm, and glibc's and musl's transcendentals differ
+            in last-ulp cases; the native reference now links musl's libm
+            (build-muslmath.sh, shadowing glibc's math symbols), so both
+            builds compute with the SAME math. sqrt is IEEE-exact everywhere;
+            sin/cos/pow/exp2 are not - this shim closes that class of
+            cross-build divergence for good. (2026-08-25)
 
 Decision, 2026-08-25: the frontend keeps mounting the rom under the fixed name
 "rom" and does NOT pass the original filename into the guest. A filename-

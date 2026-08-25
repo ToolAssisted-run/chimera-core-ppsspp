@@ -41,6 +41,9 @@ for p in "$here"/../patches/*.patch; do
 	fi
 done
 
+# the pinned ffmpeg fork, decode-only, no asm, no threads (see build-ffmpeg.sh)
+[ -f "$here/obj-guest/ffmpeg/lib/libavcodec.a" ] || sh "$here/build-ffmpeg.sh" -m "$mb" guest
+
 # compile the curated source set + adapter for the guest
 make -f "$here/guest.mk" -C "$here" -j"$jobs" MB="$mb" objs
 
@@ -64,6 +67,9 @@ g++ -specs "$sr/lib/musl-gcc.specs" -mcmodel=large -fno-pic -fno-pie \
 	"$here"/obj-guest/gstubs/*.o \
 	"$mbuild/source/guest/cxxglue.c.o" "$mbuild/source/guest/emulibc.c.o" \
 	"$here/obj-guest/libchdr.a" "$here/obj-guest/lib7zip.a" \
+	"$here"/obj-guest/ffmpeg/lib/libavformat.a "$here"/obj-guest/ffmpeg/lib/libavcodec.a \
+	"$here"/obj-guest/ffmpeg/lib/libswscale.a "$here"/obj-guest/ffmpeg/lib/libswresample.a \
+	"$here"/obj-guest/ffmpeg/lib/libavutil.a \
 	-L"$sr/lib" -lstdc++ -lgcc -lgcc_eh -lc
 echo "built $out/core.wbx"
 

@@ -11,7 +11,7 @@ O    ?= obj-native
 
 include sources.mk
 
-INCS := $(PPINCS)
+INCS := $(PPINCS) -I$(O)/ffmpeg/include
 
 WARN     := -Wno-deprecated-declarations
 CFLAGS   := -O2 -g1 $(DEFS) $(INCS) $(WARN)
@@ -71,9 +71,19 @@ $(O)/drv/%.o: %.cpp psp-driver.h
 	@mkdir -p $(dir $@)
 	g++ $(CXXFLAGS) -c -o $@ $<
 
-bin/run-native: $(OBJS) $(DRIVER_OBJS) $(O)/libchdr.a $(O)/lib7zip.a
+FFMPEG_LIBS := $(O)/ffmpeg/lib/libavformat.a $(O)/ffmpeg/lib/libavcodec.a $(O)/ffmpeg/lib/libswscale.a $(O)/ffmpeg/lib/libswresample.a $(O)/ffmpeg/lib/libavutil.a
+
+$(O)/ffmpeg/lib/libavcodec.a:
+	./build-ffmpeg.sh native
+
+# musl's libm, shadowing glibc's: the guest computes with musl's math, and the
+# reference must compute with the SAME math or float decode paths diverge.
+$(O)/libmuslmath.a:
+	./build-muslmath.sh
+
+bin/run-native: $(OBJS) $(DRIVER_OBJS) $(O)/libchdr.a $(O)/lib7zip.a $(O)/ffmpeg/lib/libavcodec.a $(O)/libmuslmath.a
 	@mkdir -p bin
-	g++ -o $@ $(OBJS) $(DRIVER_OBJS) $(O)/libchdr.a $(O)/lib7zip.a -lpthread -ldl -lrt
+	g++ -o $@ $(OBJS) $(DRIVER_OBJS) $(O)/libchdr.a $(O)/lib7zip.a $(FFMPEG_LIBS) $(O)/libmuslmath.a -lpthread -ldl -lrt
 
 native: bin/run-native
 .PHONY: native
