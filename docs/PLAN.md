@@ -243,8 +243,28 @@ real fonts exists (PPSSPP's docs list only filenames; no database carries
 hashes of Sony's files), so the sha1 lists start empty: a right-sized dump
 loads as "unrecognised - used anyway", and the movie header's Firmware line
 records id=SHA1 for every provided font, with playback warning on mismatch.
-When hashes of a verified console dump are available, append them to the
-sha1 lists to upgrade those dumps to "ok". The wrong-size refusal is
+Hashes pinned 2026-08-25 from Sony's final official firmware. Recipe, for
+anyone re-deriving them: PPSSPP master (not our v1.20.4 pin) carries
+Core/Util/PSARUnpack.cpp, written to pull flash0:/font out of an official
+updater; compiled against our native object set - with master's
+Core/ELF/PrxDecrypter.cpp, whose PSAR tags v1.20.4 lacks - it decrypts the
+6.61 updater EBOOT.PBP (SHA1 bc10ad2114e1c349f23ee2b130d82f7e863460ac,
+32580549 bytes) and writes the 21 files under flash0:/font. Two sharp
+edges: pass the tool an ABSOLUTE output path (PPSSPP's Path silently fails
+to create relative directories, so every write fails with the archive
+otherwise fully decoded), and the extracted fonts are copyrighted - they
+stay out of every repo, only their hashes go in. Confirmation the
+decryption is right: all 18 extracted sizes equal the registry values
+already pinned from hardware, and every one differs from the free
+replacement (real ltn0 69108 vs free 38236). The firmware also carries
+arib.pgf, gb3s1518.bwfon and imagefont.bin, which sceFont never loads, so
+they get no declaration; zh_gb.pgf is NOT in the firmware at all (a real
+console's Chinese font is the gb3s1518 bitmap), which settles it as
+game-shipped and unpinned. A dump from an older firmware revision is used
+and recorded, just reported as unrecognised; add its hashes here to label
+it ok. Verified with the real fonts: all 18 mounted at once (jpn0 is
+1.5MB) run native==sandbox==rerecord, and the Chimera frontend boots the
+machine with all 18 provisioned through the Firmware store. The wrong-size refusal is
 gate-checked by hand (frontend refuses a 38236-byte ltn0.pgf, machine
 unchanged); the provisioning legs stay on zh_gb.
 PPGe (savedata dialog rendering) stays on the atlas: its alternative is a
