@@ -17,9 +17,24 @@ differing = {k: (v, got.get(k)) for k, v in want.items() if got.get(k) != v}
 if differing:
     sys.exit(f"bindings differ from the package's: {differing}")
 
+wantAnalog = shipped.get("AllTrollersAnalog", {}).get(name)
+nAnalog = 0
+if wantAnalog is not None:
+    gotAnalog = cfg.get("AllTrollersAnalog", {}).get(name)
+    if gotAnalog is None:
+        sys.exit(f"the frontend has no analog bindings for '{name}'")
+    for axis, bind in wantAnalog.items():
+        gb = gotAnalog.get(axis)
+        if gb is None:
+            sys.exit(f"analog bind for '{axis}' was not adopted")
+        for field, v in bind.items():
+            if gb.get(field) != v:
+                sys.exit(f"analog bind '{axis}.{field}' differs: shipped {v!r}, config {gb.get(field)!r}")
+    nAnalog = len(wantAnalog)
+
 wantAF = shipped.get("AllTrollersAutoFire", {}).get(name)
 if wantAF is not None:
     gotAF = cfg.get("AllTrollersAutoFire", {}).get(name)
     if gotAF != wantAF:
         sys.exit(f"autofire bindings differ from the package's: shipped {wantAF}, config {gotAF}")
-print(f"{name}: {len(want)} bindings adopted from the package")
+print(f"{name}: {len(want)} bindings and {nAnalog} analog bindings adopted from the package")

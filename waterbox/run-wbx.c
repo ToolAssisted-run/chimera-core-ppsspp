@@ -90,7 +90,8 @@ static uint64_t padForFrame(long frame)
 {
 	uint64_t x = (uint64_t)frame * 6364136223846793005ULL + 1442695040888963407ULL;
 	x ^= x >> 33;
-	return (x & 0xFFF) | (0x80ull << 16) | (0x80ull << 24);
+	/* buttons in the low 12 bits, a wandering left stick in the analog bytes */
+	return (x & 0xFFF) | (((x >> 12) & 0xFF) << 16) | (((x >> 20) & 0xFF) << 24);
 }
 
 typedef int (MB_GUEST_ABI *intfn)(void);
@@ -111,7 +112,7 @@ static uintptr_t proc(mb_host *h, const char *n)
 int main(int argc, char **argv)
 {
 	const char *wbxPath = 0, *romPath = 0, *sramOut = 0, *sramIn = 0, *moviePath = 0;
-	long frames = 60; int rerecord = 0, blank = 0, plainrom = 0, rewind = 0;
+	long frames = 60; int rerecord = 0, blank = 0, plainrom = 0, rewind = 0, axesViaExport = 0;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--rerecord")) rerecord = 1;
 		else if (!strcmp(argv[i], "--rewind")) rewind = 1;
@@ -119,6 +120,7 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--saveram-out") && i + 1 < argc) sramOut = argv[++i];
 		else if (!strcmp(argv[i], "--saveram-in") && i + 1 < argc) sramIn = argv[++i];
 		else if (!strcmp(argv[i], "--movie") && i + 1 < argc) moviePath = argv[++i];
+		else if (!strcmp(argv[i], "--axes-via-export")) axesViaExport = 1;
 		else if (!strcmp(argv[i], "--blank")) blank = 1;
 		else if (!wbxPath) wbxPath = argv[i];
 		else if (!romPath) romPath = argv[i];
@@ -188,6 +190,12 @@ int main(int argc, char **argv)
 	}
 
 	framefn FrameAdvance = (framefn)proc(h, "FrameAdvance");
+	/* --axes-via-export drives the stick through the SetAxis export exactly as
+	 * the frontend does; the digests must match the packed-analog path, which
+	 * is what the gate uses this flag to prove. */
+	void (MB_GUEST_ABI *SetAxis)(int32_t, int32_t) = 0;
+	if (axesViaExport)
+		SetAxis = (void (MB_GUEST_ABI *)(int32_t, int32_t))proc(h, "SetAxis");
 	ptrfn GetVideoBgra = (ptrfn)proc(h, "GetVideoBgra");
 	ptrfn GetAudio = (ptrfn)proc(h, "GetAudio");
 	intfn GetAudioSampleCount = (intfn)proc(h, "GetAudioSampleCount");
@@ -215,14 +223,19 @@ int main(int argc, char **argv)
 	 * half again: both passes must digest identically. */
 	if (rewind) {
 		long half = frames / 2;
-		for (long f = 0; f < half; f++)
-			FrameAdvance(movie ? (f < movieLen ? movie[f] : (0x80ull << 16) | (0x80ull << 24)) : blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
+		for (long f = 0; f < half; f++) {
+			uint64_t in = movie ? (f < movieLen ? movie[f] : (0x80ull << 16) | (0x80ull << 24)) : blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f);
+			if (SetAxis) { SetAxis(0, (int32_t)((in >> 16) & 0xFF) - 128); SetAxis(1, 128 - (int32_t)((in >> 24) & 0xFF)); }
+			FrameAdvance(in);
+		}
 		st.len = 0;
 		wbx_save_state(h, mem_write, (uintptr_t)&st, &r);
 		if (r.error_message[0]) { fprintf(stderr, "rewind save: %s\n", r.error_message); return 1; }
 		uint64_t v1 = 0, a1 = 0, v2 = 0, a2 = 0;
 		for (long f = half; f < frames; f++) {
-			FrameAdvance(movie ? (f < movieLen ? movie[f] : (0x80ull << 16) | (0x80ull << 24)) : blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
+			uint64_t in = movie ? (f < movieLen ? movie[f] : (0x80ull << 16) | (0x80ull << 24)) : blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f);
+			if (SetAxis) { SetAxis(0, (int32_t)((in >> 16) & 0xFF) - 128); SetAxis(1, 128 - (int32_t)((in >> 24) & 0xFF)); }
+			FrameAdvance(in);
 			v1 = fnv(v1, (const void *)GetVideoBgra(), 480 * 272 * 4);
 			a1 = fnv(a1, (const void *)GetAudio(), (size_t)GetAudioSampleCount() * 4);
 		}
@@ -230,7 +243,9 @@ int main(int argc, char **argv)
 		wbx_load_state(h, mem_read, (uintptr_t)&st, &r);
 		if (r.error_message[0]) { fprintf(stderr, "rewind load: %s\n", r.error_message); return 1; }
 		for (long f = half; f < frames; f++) {
-			FrameAdvance(movie ? (f < movieLen ? movie[f] : (0x80ull << 16) | (0x80ull << 24)) : blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
+			uint64_t in = movie ? (f < movieLen ? movie[f] : (0x80ull << 16) | (0x80ull << 24)) : blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f);
+			if (SetAxis) { SetAxis(0, (int32_t)((in >> 16) & 0xFF) - 128); SetAxis(1, 128 - (int32_t)((in >> 24) & 0xFF)); }
+			FrameAdvance(in);
 			v2 = fnv(v2, (const void *)GetVideoBgra(), 480 * 272 * 4);
 			a2 = fnv(a2, (const void *)GetAudio(), (size_t)GetAudioSampleCount() * 4);
 		}
@@ -249,7 +264,11 @@ int main(int argc, char **argv)
 			wbx_load_state(h, mem_read, (uintptr_t)&st, &r);
 			if (r.error_message[0]) { fprintf(stderr, "rerecord: %s\n", r.error_message); return 1; }
 		}
-		FrameAdvance(movie ? ((size_t)f < (size_t)movieLen ? movie[f] : (0x80ull << 16) | (0x80ull << 24)) : blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f));
+		{
+			uint64_t in = movie ? ((size_t)f < (size_t)movieLen ? movie[f] : (0x80ull << 16) | (0x80ull << 24)) : blank ? (0x80ull << 16) | (0x80ull << 24) : padForFrame(f);
+			if (SetAxis) { SetAxis(0, (int32_t)((in >> 16) & 0xFF) - 128); SetAxis(1, 128 - (int32_t)((in >> 24) & 0xFF)); }
+			FrameAdvance(in);
+		}
 		vh = fnv(vh, (const void *)GetVideoBgra(), 480 * 272 * 4);
 		ah = fnv(ah, (const void *)GetAudio(), (size_t)GetAudioSampleCount() * 4);
 	}

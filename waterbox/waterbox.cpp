@@ -23,6 +23,14 @@
 static char g_loadError[512];
 static bool g_inited;
 
+// Axes set by the frontend through the SetAxis export (index 0 = L-Stick X,
+// 1 = L-Stick Y; positive Y = up, matching the config's axis declaration and
+// the natural gamepad passthrough). Once the export has been used, it stays
+// authoritative over the packed-input analog bytes - a driver uses one path
+// or the other, never both, so this is deterministic.
+static int32_t g_axis[2];
+static bool g_axisMode;
+
 // Fixed output buffers, savestated as ordinary guest memory.
 static uint32_t g_video[480 * 272];
 static int16_t g_audio[8192 * 2];
@@ -67,12 +75,27 @@ ECL_EXPORT int Init(void)
 	return 1;
 }
 
+ECL_EXPORT void SetAxis(int32_t index, int32_t value)
+{
+	if (index >= 0 && index < 2) {
+		if (value < -128) value = -128;
+		if (value > 127) value = 127;
+		g_axis[index] = value;
+		g_axisMode = true;
+	}
+}
+
 ECL_EXPORT void FrameAdvance(uint64_t input)
 {
 	if (!g_inited)
 		return;
 
-	pspdrv_run_frame(pspdrv_input_from_packed(input));
+	PspDrvInput in = pspdrv_input_from_packed(input);
+	if (g_axisMode) {
+		in.leftX = (int8_t)g_axis[0];
+		in.leftY = (int8_t)g_axis[1];
+	}
+	pspdrv_run_frame(in);
 
 	int w, h;
 	const uint32_t *video = pspdrv_video(&w, &h);

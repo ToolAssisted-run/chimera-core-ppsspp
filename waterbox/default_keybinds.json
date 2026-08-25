@@ -24,5 +24,23 @@
 	},
 	"AllTrollersAutoFire": {
 		"PSP Controller": {}
+	},
+	"AllTrollersAnalog": {
+		"PSP Controller": {
+			"P1 L-Stick X": {
+				"Value": "X1 LeftThumbX Axis",
+				"Mult": 1.0,
+				"Deadzone": 0.1,
+				"ButtonBindPositive": "",
+				"ButtonBindNegative": ""
+			},
+			"P1 L-Stick Y": {
+				"Value": "X1 LeftThumbY Axis",
+				"Mult": 1.0,
+				"Deadzone": 0.1,
+				"ButtonBindPositive": "",
+				"ButtonBindNegative": ""
+			}
+		}
 	}
 }

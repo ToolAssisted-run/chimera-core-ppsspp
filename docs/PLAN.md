@@ -134,9 +134,20 @@ Three prior bodies of work exist (see README for links):
       - [ ] real game content (.iso/.pbp) - none on this machine; needs the
             user's files. ISO path (ISOFileSystem over one FileLoader) is
             architecturally exercised but untested with a real image.
-      - [ ] analog in the frontend (the packed input carries the stick;
-            the generic adapter has no analog surface yet), settings surface,
-            performance (x86 JIT as an option), ffmpeg for psmfplayer.
+      - [x] analog input, end to end: the frontend's existing axis contract
+            (config "axes" + guest SetAxis export, AnalogBind adoption from
+            default_keybinds.json) is wired to the core - "P1 L-Stick X/Y",
+            -128..127, positive Y = up, bound to the gamepad's left thumb by
+            default. run-gate drives the sandbox through SetAxis against the
+            native packed-analog path with a wandering stick and requires
+            identical digests (6/6 incl. ctrl.prx); injection into sceCtrl
+            verified directly (values reach ctrlCurrent and, with analog
+            sampling mode enabled, the sampled buffers). The frontend gate
+            confirms Chimera loads the axes declaration (the engine aborts
+            if SetAxis were missing) and adopts the 2 analog binds.
+            (2026-08-25)
+      - [ ] settings surface (declared empty), performance (x86 JIT as an
+            option), ffmpeg for psmfplayer.
 
 Note on pspautotests counts: booting a bare .prx now serves umd0: from the
 boot file ALONE (BlobFileSystem), matching the frontend's single-mounted-file

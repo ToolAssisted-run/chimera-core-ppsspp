@@ -21,7 +21,7 @@ shift $((OPTIND - 1))
 tests="$*"
 if [ -z "$tests" ]; then
 	at="$here/../extern/ppsspp/pspautotests/tests"
-	tests="$at/cpu/cpu_alu/cpu_alu.prx $at/gpu/displaylist/state.prx $at/gpu/triangle/triangle.prx $at/threads/mutex/mutex.prx $at/audio/sascore/adsrcurve.prx"
+	tests="$at/cpu/cpu_alu/cpu_alu.prx $at/gpu/displaylist/state.prx $at/gpu/triangle/triangle.prx $at/threads/mutex/mutex.prx $at/audio/sascore/adsrcurve.prx $at/ctrl/ctrl.prx"
 fi
 
 fail=0
@@ -29,8 +29,11 @@ for t in $tests; do
 	name="$(basename "$t")"
 	[ -f "$t" ] || { echo "SKIP $name (missing)"; continue; }
 	nat="$("$here/bin/run-native" "$t" --gate --frames "$frames" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
-	box="$(timeout 600 "$here/bin/run-wbx" "$here/bin/core.wbx" "$t" "$frames" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
-	rr="$(timeout 900 "$here/bin/run-wbx" "$here/bin/core.wbx" "$t" "$frames" --rerecord 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	# --axes-via-export: the sandbox run drives the stick through the SetAxis
+	# export the way the frontend does; matching the native packed-analog run
+	# proves the two input paths land the same machine.
+	box="$(timeout 600 "$here/bin/run-wbx" "$here/bin/core.wbx" "$t" "$frames" --axes-via-export 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	rr="$(timeout 900 "$here/bin/run-wbx" "$here/bin/core.wbx" "$t" "$frames" --rerecord --axes-via-export 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
 	if [ -z "$nat" ] || [ -z "$box" ]; then
 		echo "FAIL $name (a run produced no digests)"; fail=1; continue
 	fi

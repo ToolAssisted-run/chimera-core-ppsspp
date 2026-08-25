@@ -1,1 +1,1 @@
-PSP Controller: 12 bindings adopted from the package
+PSP Controller: 12 bindings and 2 analog bindings adopted from the package

@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
 			// run-wbx's padForFrame, verbatim
 			uint64_t x = (uint64_t)i * 6364136223846793005ULL + 1442695040888963407ULL;
 			x ^= x >> 33;
-			input = pspdrv_input_from_packed((x & 0xFFF) | (0x80ull << 16) | (0x80ull << 24));
+			input = pspdrv_input_from_packed((x & 0xFFF) | (((x >> 12) & 0xFF) << 16) | (((x >> 20) & 0xFF) << 24));
 		}
 		pspdrv_run_frame(input);
 
