@@ -153,7 +153,22 @@ Three prior bodies of work exist (see README for links):
             bit-identical native-vs-sandbox, and the frontend gate proves the
             sync-settings dialog path reshapes the machine (the RAM domain
             reports 32MB). (2026-08-25)
-      - [ ] performance (x86 JIT as an option), ffmpeg for psmfplayer.
+      - [x] the x86 JIT as a sync setting ("cpuCore": ir-interpreter default,
+            interpreter, jit). Generated code is ordinary guest memory at
+            fixed deterministic addresses, so the guest is fully
+            deterministic under JIT (plain == rerecord == rewind == repeat on
+            ALL digests, RAM included). Cross-build RAM equality is impossible
+            BY CONSTRUCTION under JIT: block linking writes cache-offset
+            emuhack opcodes into PSP RAM and generated-code sizes differ
+            between the glibc and musl builds - so the gate's JIT leg compares
+            native-vs-guest minus RAM plus full-digest guest rerecord. The
+            two CPU cores are different machines (digests differ), hence the
+            sync setting. On Beta Bloc (softgpu-bound) JIT ~= interpreter at
+            ~180fps; the win is CPU-heavy 3D games. (2026-08-25)
+      - [ ] ffmpeg for psmfplayer (viable: pinned source build into the image,
+            --disable-asm or forced CPU flags against SIMD dispatch,
+            single-threaded; lands as a new core version since it changes
+            machine behavior).
 
 Decision, 2026-08-25: the frontend keeps mounting the rom under the fixed name
 "rom" and does NOT pass the original filename into the guest. A filename-

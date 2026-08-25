@@ -111,7 +111,7 @@ static uintptr_t proc(mb_host *h, const char *n)
 
 int main(int argc, char **argv)
 {
-	const char *wbxPath = 0, *romPath = 0, *sramOut = 0, *sramIn = 0, *moviePath = 0, *settingsPath = 0;
+	const char *wbxPath = 0, *romPath = 0, *sramOut = 0, *sramIn = 0, *moviePath = 0, *settingsPath = 0, *ramOut = 0;
 	long frames = 60; int rerecord = 0, blank = 0, plainrom = 0, rewind = 0, axesViaExport = 0;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--rerecord")) rerecord = 1;
@@ -122,6 +122,7 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--movie") && i + 1 < argc) moviePath = argv[++i];
 		else if (!strcmp(argv[i], "--axes-via-export")) axesViaExport = 1;
 		else if (!strcmp(argv[i], "--settings") && i + 1 < argc) settingsPath = argv[++i];
+		else if (!strcmp(argv[i], "--ram-out") && i + 1 < argc) ramOut = argv[++i];
 		else if (!strcmp(argv[i], "--blank")) blank = 1;
 		else if (!wbxPath) wbxPath = argv[i];
 		else if (!romPath) romPath = argv[i];
@@ -298,6 +299,14 @@ int main(int argc, char **argv)
 		if (!dname) continue;
 		uint64_t dh = fnv(0, (const void *)GetMemoryDomainPtr(i), (size_t)GetMemoryDomainSize(i));
 		printf("domain[%s]=%016llx\n", dname, (unsigned long long)dh);
+	}
+
+	if (ramOut) {
+		FILE *f = fopen(ramOut, "wb");
+		if (f) {
+			fwrite((const void *)GetMemoryDomainPtr(0), 1, (size_t)GetMemoryDomainSize(0), f);
+			fclose(f);
+		}
 	}
 
 	if (sramOut) {

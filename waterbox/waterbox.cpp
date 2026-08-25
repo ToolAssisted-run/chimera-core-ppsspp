@@ -71,6 +71,11 @@ ECL_EXPORT int Init(void)
 	// user's choices; movies record them).
 	{
 		char buf[128];
+		if (wbx_setting_str("cpuCore", buf, sizeof buf) >= 0) {
+			if (strcmp(buf, "jit") == 0) cfg.cpuCore = 1;          // CPUCore::JIT
+			else if (strcmp(buf, "interpreter") == 0) cfg.cpuCore = 0;
+			// anything else stays the IR interpreter (2)
+		}
 		if (wbx_setting_str("pspModel", buf, sizeof buf) >= 0 && strcmp(buf, "psp-1000") == 0)
 			cfg.pspModel = 0;
 		static const char *kLangs[12] = {

@@ -91,6 +91,7 @@ int main(int argc, char **argv) {
 	const char *sliceOut = nullptr;
 	const char *moviePath = nullptr;
 	int pspModel = 1;
+	int cpuCore = 2;
 	unsigned long sliceOff = 0, sliceLen = 0;
 	int frames = 60;
 	bool autotest = false, verbose = false, gate = false;
@@ -105,6 +106,10 @@ int main(int argc, char **argv) {
 		else if (!strcmp(argv[i], "--memstick") && i + 1 < argc) memstick = argv[++i];
 		else if (!strcmp(argv[i], "--root") && i + 1 < argc) root = argv[++i];
 		else if (!strcmp(argv[i], "--psp-model") && i + 1 < argc) pspModel = strcmp(argv[++i], "psp-1000") == 0 ? 0 : 1;
+		else if (!strcmp(argv[i], "--cpu") && i + 1 < argc) {
+			++i;
+			cpuCore = !strcmp(argv[i], "jit") ? 1 : !strcmp(argv[i], "interpreter") ? 0 : 2;
+		}
 		else if (!strcmp(argv[i], "--dump-video") && i + 1 < argc) dumpPrefix = argv[++i];
 		else if (!strcmp(argv[i], "--ram-slice") && i + 3 < argc) {
 			sliceOff = strtoul(argv[++i], nullptr, 0);
@@ -126,6 +131,7 @@ int main(int argc, char **argv) {
 	cfg.verboseLog = verbose;
 	cfg.mountRoot = root ? root : "";
 	cfg.pspModel = pspModel;
+	cfg.cpuCore = cpuCore;
 	cfg.collectDebugOutput = autotest;
 
 	std::vector<uint64_t> movie;

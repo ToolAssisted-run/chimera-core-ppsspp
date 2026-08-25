@@ -49,4 +49,36 @@ for t in $tests; do
 	fi
 	echo "PASS $name ($frames frames, native==sandbox==rerecord)"
 done
+
+# ---- the JIT leg, one test -------------------------------------------------
+# Under the x86 JIT, block linking writes cache-offset "emuhack" opcodes into
+# PSP RAM, and generated-code sizes differ between the glibc and musl builds -
+# so cross-build RAM equality is impossible BY CONSTRUCTION while emulation is
+# equivalent. The reproduction contract binds to the guest build alone, so the
+# JIT gate is: cross-build equality on video/audio/VRAM/scratchpad, and full
+# five-digest determinism (plain == rerecord) within the guest.
+jt="$here/../extern/ppsspp/pspautotests/tests/gpu/triangle/triangle.prx"
+if [ -f "$jt" ]; then
+	jset="$here/../extern/ppsspp/pspautotests/.gate-jit-settings.json"
+	printf '{"cpuCore":"jit"}' > "$jset"
+	jnat="$("$here/bin/run-native" "$jt" --gate --frames "$frames" --cpu jit 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)' | grep -v 'domain\[RAM\]')"
+	jbox_full="$(timeout 600 "$here/bin/run-wbx" "$here/bin/core.wbx" "$jt" "$frames" --settings "$jset" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	jbox="$(printf '%s\n' "$jbox_full" | grep -v 'domain\[RAM\]')"
+	jrr="$(timeout 900 "$here/bin/run-wbx" "$here/bin/core.wbx" "$jt" "$frames" --settings "$jset" --rerecord 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	rm -f "$jset"
+	if [ -z "$jnat" ] || [ -z "$jbox" ]; then
+		echo "FAIL jit (a run produced no digests)"; fail=1
+	elif [ "$jnat" != "$jbox" ]; then
+		echo "FAIL jit (native vs sandbox, RAM excluded)"
+		echo "--- native"; echo "$jnat"; echo "--- sandbox"; echo "$jbox"
+		fail=1
+	elif [ "$jbox_full" != "$jrr" ]; then
+		echo "FAIL jit (rerecord diverges in the guest)"
+		echo "--- plain"; echo "$jbox_full"; echo "--- rerecord"; echo "$jrr"
+		fail=1
+	else
+		echo "PASS jit (triangle.prx, cross-build minus RAM + guest rerecord on all digests)"
+	fi
+fi
+
 exit $fail
