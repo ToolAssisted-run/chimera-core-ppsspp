@@ -233,10 +233,20 @@ zh_gb) as optional firmware: the user points Emulator > Firmware at their
 dumps, the frontend mounts each under its file name, the guest adapter reads
 them once and hands them to a font overlay VFS backend registered ahead of
 the embedded assets, so sceFont's flash0:/font reads find the real bytes
-file by file. Sizes are deliberately not pinned (a legit dump from another
-firmware revision must not be refused); the movie header's Firmware line
-records id=SHA1 for every provided font, and playback warns on mismatch -
-the reproduction contract the frontend already applies to any firmware.
+file by file. Revised 2026-08-25 (user decision: the firmware channel is an
+enumeration of known files): the 18 console fonts pin the exact size a real
+console reports (sceFont's registry values, recorded from hardware by
+pspautotests) - a file of any other size is refused as the wrong file;
+zh_gb.pgf stays unpinned (game-shipped, no single authoritative size, and
+the gates' free test content). No public authoritative SHA1 list of the
+real fonts exists (PPSSPP's docs list only filenames; no database carries
+hashes of Sony's files), so the sha1 lists start empty: a right-sized dump
+loads as "unrecognised - used anyway", and the movie header's Firmware line
+records id=SHA1 for every provided font, with playback warning on mismatch.
+When hashes of a verified console dump are available, append them to the
+sha1 lists to upgrade those dumps to "ok". The wrong-size refusal is
+gate-checked by hand (frontend refuses a 38236-byte ltn0.pgf, machine
+unchanged); the provisioning legs stay on zh_gb.
 PPGe (savedata dialog rendering) stays on the atlas: its alternative is a
 host-side rasterizer over host fonts, which is nondeterministic and does not
 read PGF; the dialogs are PPSSPP's own HLE artwork either way.
