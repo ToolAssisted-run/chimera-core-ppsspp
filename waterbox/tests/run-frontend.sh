@@ -119,6 +119,22 @@ for rom in "${roms[@]}"; do
 		report "$name:frontend" FAIL "RAM slice differs"
 	fi
 
+	# --- sync settings must reach the guest ---
+	# The PSP model is the crispest machine-shaping setting: a PSP-1000 has
+	# 32MB of RAM where the default Slim has 64MB, and the RAM domain's size
+	# says which machine actually booted.
+	settings_config "$work/config.$name.model.ini" '{"pspModel": "psp-1000"}'
+	if run_frontend "$name.model" "$work/config.$name.model.ini" 1; then
+		got_ramsize="$(grep '^ramsize=' "$work/$name.model.meta.txt" | cut -d= -f2)"
+		if [ "$got_ramsize" = "33554432" ]; then
+			report "$name:settings:model" PASS "pspModel=psp-1000 booted a 32MB machine"
+		else
+			report "$name:settings:model" FAIL "expected a 32MB RAM domain, got '$got_ramsize'"
+		fi
+	else
+		report "$name:settings:model" FAIL "run did not report OK (see tests/work/$name.model.log)"
+	fi
+
 	# --- the bindings the package ships must become the frontend's defaults ---
 	python3 "$here/forget-controller.py" "$work/config.$name.ini" "$work/config.$name.keys.ini" "PSP Controller"
 	if run_frontend "$name.keys" "$work/config.$name.keys.ini" 1; then

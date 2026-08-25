@@ -236,7 +236,7 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	g_Config.sNickName = cfg.nickName;
 	g_Config.iTimeZone = 0;
 	g_Config.iDateFormat = PSP_SYSTEMPARAM_DATE_FORMAT_YYYYMMDD;
-	g_Config.iButtonPreference = PSP_SYSTEMPARAM_BUTTON_CROSS;
+	g_Config.iButtonPreference = cfg.buttonPreference;
 	g_Config.iLockParentalLevel = 9;
 	g_Config.iInternalResolution = 1;
 	g_Config.bSoftwareSkinning = true;

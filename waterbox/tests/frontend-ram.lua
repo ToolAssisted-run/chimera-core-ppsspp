@@ -26,6 +26,7 @@ local function finish(status, detail)
 		"detail=" .. (detail or ""),
 		"frames=" .. (meta.frames or 0),
 		"lag=" .. (meta.lag or 0),
+		"ramsize=" .. (meta.ramsize or 0),
 	}
 	if meta.metaPath then
 		writeAll(meta.metaPath, table.concat(lines, "\n") .. "\n")
@@ -61,6 +62,12 @@ end
 
 meta.frames = emu.framecount()
 meta.lag = emu.lagcount()
+-- the RAM domain's size is machine-shaping state (32MB PSP-1000 vs 64MB
+-- Slim), which is how the settings check sees that a sync setting arrived
+pcall(function()
+	memory.usememorydomain("RAM")
+	meta.ramsize = memory.getcurrentmemorydomainsize()
+end)
 
 if job.shot ~= nil and job.shot ~= "" then
 	client.screenshot(job.shot)

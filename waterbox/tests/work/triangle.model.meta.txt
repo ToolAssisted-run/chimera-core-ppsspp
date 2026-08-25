@@ -2,4 +2,4 @@ status=OK
 detail=
 frames=1
 lag=0
-ramsize=67108864
+ramsize=33554432

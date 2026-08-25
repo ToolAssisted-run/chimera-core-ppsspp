@@ -1,0 +1,4 @@
+frames=1
+out=/home/jaffar/chimera-core-ppsspp/waterbox/tests/work/triangle.model.ram.bin
+meta=/home/jaffar/chimera-core-ppsspp/waterbox/tests/work/triangle.model.meta.txt
+shot=

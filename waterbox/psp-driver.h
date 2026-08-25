@@ -25,6 +25,8 @@ struct PspDrvConfig {
 	// Emulated locale/config the machine boots with.
 	int language = 1;  // PSP_SYSTEMPARAM_LANGUAGE_ENGLISH
 	std::string nickName = "Chimera";
+	// 0 = Circle confirms (Japanese consoles), 1 = Cross confirms.
+	int buttonPreference = 1;  // PSP_SYSTEMPARAM_BUTTON_CROSS
 	// Console-style logging to stderr for debugging.
 	bool verboseLog = false;
 	// Collect the emulated printf/debug output (pspautotests protocol).

@@ -14,6 +14,7 @@
 #include <string>
 
 #include <emulibc.h>
+#include <waterbox_settings.h>
 
 #include "psp-driver.h"
 #include "ram-filesystem.h"
@@ -59,11 +60,32 @@ ECL_EXPORT int Init(void)
 	PspDrvConfig cfg;
 	cfg.bootPath = romName;
 	cfg.assetsDir = "";     // empty = the assets compiled into this image
-	cfg.memstickDir = "";   // TODO(M4): RAM memory stick filesystem
+	cfg.memstickDir = "";   // the RAM memory stick, see ram-filesystem.cpp
 	cfg.cpuCore = 2;        // IR interpreter
 	cfg.threads = 2;
 	cfg.verboseLog = false;
 	cfg.collectDebugOutput = false;
+
+	// Sync settings: everything that shapes the machine, read once from the
+	// mounted "settings" channel (the package defaults overlaid with the
+	// user's choices; movies record them).
+	{
+		char buf[128];
+		if (wbx_setting_str("pspModel", buf, sizeof buf) >= 0 && strcmp(buf, "psp-1000") == 0)
+			cfg.pspModel = 0;
+		static const char *kLangs[12] = {
+			"japanese", "english", "french", "spanish", "german", "italian",
+			"dutch", "portuguese", "russian", "korean",
+			"chinese-traditional", "chinese-simplified",
+		};
+		if (wbx_setting_str("language", buf, sizeof buf) >= 0)
+			for (int i = 0; i < 12; i++)
+				if (strcmp(buf, kLangs[i]) == 0) { cfg.language = i; break; }
+		if (wbx_setting_str("nickname", buf, sizeof buf) >= 0 && buf[0])
+			cfg.nickName = buf;
+		if (wbx_setting_str("buttonPreference", buf, sizeof buf) >= 0 && strcmp(buf, "circle") == 0)
+			cfg.buttonPreference = 0;  // PSP_SYSTEMPARAM_BUTTON_CIRCLE
+	}
 
 	std::string err;
 	if (!pspdrv_boot(cfg, &err)) {

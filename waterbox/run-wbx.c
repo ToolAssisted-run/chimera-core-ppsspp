@@ -111,7 +111,7 @@ static uintptr_t proc(mb_host *h, const char *n)
 
 int main(int argc, char **argv)
 {
-	const char *wbxPath = 0, *romPath = 0, *sramOut = 0, *sramIn = 0, *moviePath = 0;
+	const char *wbxPath = 0, *romPath = 0, *sramOut = 0, *sramIn = 0, *moviePath = 0, *settingsPath = 0;
 	long frames = 60; int rerecord = 0, blank = 0, plainrom = 0, rewind = 0, axesViaExport = 0;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--rerecord")) rerecord = 1;
@@ -121,6 +121,7 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--saveram-in") && i + 1 < argc) sramIn = argv[++i];
 		else if (!strcmp(argv[i], "--movie") && i + 1 < argc) moviePath = argv[++i];
 		else if (!strcmp(argv[i], "--axes-via-export")) axesViaExport = 1;
+		else if (!strcmp(argv[i], "--settings") && i + 1 < argc) settingsPath = argv[++i];
 		else if (!strcmp(argv[i], "--blank")) blank = 1;
 		else if (!wbxPath) wbxPath = argv[i];
 		else if (!romPath) romPath = argv[i];
@@ -168,6 +169,22 @@ int main(int argc, char **argv)
 		wbx_mount_file(h, "rom.name", mem_reader, (uintptr_t)&nr, false, &r);
 		if (r.error_message[0]) { fprintf(stderr, "mount rom.name: %s\n", r.error_message); return 1; }
 	}
+
+	/* the frontend always mounts "settings" (empty object when nothing was
+	 * changed); mirror it so a sync setting can be exercised without one */
+	long settingsLen = 0;
+	uint8_t *settings = 0;
+	if (settingsPath) {
+		FILE *sf = fopen(settingsPath, "rb");
+		if (!sf) { fprintf(stderr, "cannot read %s\n", settingsPath); return 1; }
+		fseek(sf, 0, SEEK_END); settingsLen = ftell(sf); fseek(sf, 0, SEEK_SET);
+		settings = malloc(settingsLen ? settingsLen : 1);
+		if (fread(settings, 1, settingsLen, sf) != (size_t)settingsLen) { fprintf(stderr, "short read on %s\n", settingsPath); return 1; }
+		fclose(sf);
+	}
+	memreader setr = { settings, (size_t)settingsLen, 0 };
+	wbx_mount_file(h, "settings", mem_reader, (uintptr_t)&setr, false, &r);
+	if (r.error_message[0]) { fprintf(stderr, "mount settings: %s\n", r.error_message); return 1; }
 
 	wbx_activate_host(h, &r);
 	intfn Init = (intfn)proc(h, "Init");

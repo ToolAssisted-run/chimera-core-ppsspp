@@ -146,8 +146,21 @@ Three prior bodies of work exist (see README for links):
             confirms Chimera loads the axes declaration (the engine aborts
             if SetAxis were missing) and adopts the 2 analog binds.
             (2026-08-25)
-      - [ ] settings surface (declared empty), performance (x86 JIT as an
-            option), ffmpeg for psmfplayer.
+      - [x] settings surface: pspModel (PSP-1000 32MB / Slim 64MB), language,
+            nickname, buttonPreference - all sync, read from the mounted
+            settings channel via the miniBox jsmn helper. run-wbx grows
+            --settings, run-native --psp-model; a psp-1000 boot is
+            bit-identical native-vs-sandbox, and the frontend gate proves the
+            sync-settings dialog path reshapes the machine (the RAM domain
+            reports 32MB). (2026-08-25)
+      - [ ] performance (x86 JIT as an option), ffmpeg for psmfplayer.
+
+Decision, 2026-08-25: the frontend keeps mounting the rom under the fixed name
+"rom" and does NOT pass the original filename into the guest. A filename-
+derived machine (PPSSPP's fake DiscIDs for homebrew) would desync a movie the
+moment the user renames the file; the constant name gives a constant identity,
+and real games take their DiscID from PARAM.SFO regardless. run-wbx's
+/<basename> + rom.name mount is a testing convenience only.
 
 Note on pspautotests counts: booting a bare .prx now serves umd0: from the
 boot file ALONE (BlobFileSystem), matching the frontend's single-mounted-file
