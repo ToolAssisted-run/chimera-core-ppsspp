@@ -1,5 +1,7 @@
 waterbox/bin/
 waterbox/obj/
+waterbox/obj-guest/
+waterbox/obj-native/
 *.o
 *.wbx
 build/
