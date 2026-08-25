@@ -3,6 +3,7 @@
 // frame-stepping loop); both are part of PPSSPP, GPL-2.0-or-later, like this file.
 #include "psp-driver.h"
 
+#include <cctype>
 #include <cstring>
 #include <algorithm>
 #include <vector>
@@ -178,6 +179,120 @@ extern "C" unsigned __default_stacksize;  // musl internal, one static link away
 // emulated RTC's base time. Set from the config before PSP_Init runs.
 extern "C" int64_t Chimera_RtcBaseSeconds = 1495889068;
 
+static bool matchOption(const char *value, const char *const *options, int n, int *out) {
+	for (int i = 0; i < n; i++)
+		if (strcmp(value, options[i]) == 0) { *out = i; return true; }
+	return false;
+}
+
+bool pspdrv_apply_setting(PspDrvConfig &cfg, const char *key, const char *value) {
+	if (strcmp(key, "cpuCore") == 0) {
+		if (strcmp(value, "jit") == 0) cfg.cpuCore = 1;
+		else if (strcmp(value, "interpreter") == 0) cfg.cpuCore = 0;
+		else if (strcmp(value, "ir-interpreter") == 0) cfg.cpuCore = 2;
+		else return false;
+		return true;
+	}
+	if (strcmp(key, "pspModel") == 0) {
+		if (strcmp(value, "psp-1000") == 0) cfg.pspModel = 0;
+		else if (strcmp(value, "psp-2000") == 0) cfg.pspModel = 1;
+		else return false;
+		return true;
+	}
+	if (strcmp(key, "language") == 0) {
+		static const char *const kLangs[12] = {
+			"japanese", "english", "french", "spanish", "german", "italian",
+			"dutch", "portuguese", "russian", "korean",
+			"chinese-traditional", "chinese-simplified",
+		};
+		return matchOption(value, kLangs, 12, &cfg.language);
+	}
+	if (strcmp(key, "nickname") == 0) {
+		if (!value[0]) return false;
+		cfg.nickName = value;
+		return true;
+	}
+	if (strcmp(key, "buttonPreference") == 0) {
+		if (strcmp(value, "circle") == 0) cfg.buttonPreference = 0;
+		else if (strcmp(value, "cross") == 0) cfg.buttonPreference = 1;
+		else return false;
+		return true;
+	}
+	if (strcmp(key, "rtcBase") == 0) {
+		int64_t t = pspdrv_parse_datetime(value);
+		if (t < 0) return false;
+		cfg.rtcBaseSeconds = t;
+		return true;
+	}
+	if (strcmp(key, "cpuClock") == 0) {
+		int mhz = atoi(value);
+		if (mhz < 0 || mhz > 333) return false;
+		cfg.lockedCpuSpeed = mhz;
+		return true;
+	}
+	if (strcmp(key, "ioTiming") == 0) {
+		// upstream's IOTIMING_HOST (1) reads the host clock and is
+		// nondeterministic; it is deliberately not an option
+		if (strcmp(value, "fast") == 0) cfg.ioTimingMethod = 0;
+		else if (strcmp(value, "simulated") == 0) cfg.ioTimingMethod = 2;
+		else if (strcmp(value, "umd-slow") == 0) cfg.ioTimingMethod = 3;
+		else return false;
+		return true;
+	}
+	if (strcmp(key, "timeZone") == 0) {
+		int min = atoi(value);
+		if (min < -720 || min > 840) return false;
+		cfg.timeZoneMinutes = min;
+		return true;
+	}
+	if (strcmp(key, "daylightSavings") == 0) {
+		cfg.daylightSavings = strcmp(value, "true") == 0 || strcmp(value, "1") == 0;
+		return true;
+	}
+	if (strcmp(key, "firmwareVersion") == 0) {
+		int fw = atoi(value);
+		if (fw < 100 || fw > 999) return false;
+		cfg.firmwareVersion = fw;
+		return true;
+	}
+	if (strcmp(key, "macAddress") == 0) {
+		// XX:XX:XX:XX:XX:XX, hex
+		if (strlen(value) != 17) return false;
+		for (int i = 0; i < 17; i++) {
+			if ((i % 3) == 2) {
+				if (value[i] != ':') return false;
+			} else if (!isxdigit((unsigned char)value[i])) {
+				return false;
+			}
+		}
+		cfg.macAddress = value;
+		return true;
+	}
+	if (strcmp(key, "dateFormat") == 0) {
+		static const char *const kFmts[3] = { "yyyy-mm-dd", "mm-dd-yyyy", "dd-mm-yyyy" };
+		return matchOption(value, kFmts, 3, &cfg.dateFormat);
+	}
+	if (strcmp(key, "timeFormat") == 0) {
+		static const char *const kFmts[2] = { "24h", "12h" };
+		return matchOption(value, kFmts, 2, &cfg.timeFormat);
+	}
+	if (strcmp(key, "parentalLevel") == 0) {
+		int lvl = atoi(value);
+		if (lvl < 0 || lvl > 11) return false;
+		cfg.parentalLevel = lvl;
+		return true;
+	}
+	if (strcmp(key, "funcReplacements") == 0) {
+		cfg.funcReplacements = strcmp(value, "false") != 0 && strcmp(value, "0") != 0;
+		return true;
+	}
+	if (strcmp(key, "encryptSave") == 0) {
+		cfg.encryptSave = strcmp(value, "false") != 0 && strcmp(value, "0") != 0;
+		return true;
+	}
+	return false;
+}
+
 int64_t pspdrv_parse_datetime(const char *str) {
 	int y, mo, d, h, mi, se;
 	if (sscanf(str, "%d-%d-%d %d:%d:%d", &y, &mo, &d, &h, &mi, &se) != 6)
@@ -254,13 +369,16 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	g_Config.iAnisotropyLevel = 0;
 	g_Config.iMultiSampleLevel = 0;
 	g_Config.iLanguage = cfg.language;
-	g_Config.iTimeFormat = PSP_SYSTEMPARAM_TIME_FORMAT_24HR;
-	g_Config.bEncryptSave = true;
+	g_Config.iTimeFormat = cfg.timeFormat;
+	g_Config.bEncryptSave = cfg.encryptSave;
 	g_Config.sNickName = cfg.nickName;
-	g_Config.iTimeZone = 0;
-	g_Config.iDateFormat = PSP_SYSTEMPARAM_DATE_FORMAT_YYYYMMDD;
+	g_Config.iTimeZone = cfg.timeZoneMinutes;
+	g_Config.bDayLightSavings = cfg.daylightSavings;
+	g_Config.iDateFormat = cfg.dateFormat;
 	g_Config.iButtonPreference = cfg.buttonPreference;
-	g_Config.iLockParentalLevel = 9;
+	g_Config.iLockParentalLevel = cfg.parentalLevel;
+	g_Config.iLockedCPUSpeed = cfg.lockedCpuSpeed;
+	g_Config.iIOTimingMethod = cfg.ioTimingMethod;
 	g_Config.iInternalResolution = 1;
 	g_Config.bSoftwareSkinning = true;
 	g_Config.bVertexDecoderJit = true;
@@ -271,8 +389,8 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	g_Config.bMemStickInserted = true;
 	g_Config.iMemStickSizeGB = 4;
 	g_Config.bEnableWlan = false;
-	g_Config.sMACAddress = "12:34:56:78:9A:BC";
-	g_Config.iFirmwareVersion = PSP_DEFAULT_FIRMWARE;
+	g_Config.sMACAddress = cfg.macAddress;
+	g_Config.iFirmwareVersion = cfg.firmwareVersion;
 	g_Config.iPSPModel = cfg.pspModel;
 	g_Config.iGameVolume = VOLUMEHI_FULL;
 	g_Config.iReverbVolume = VOLUMEHI_FULL;
@@ -283,7 +401,7 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	g_Config.bEnableNetworkChat = false;
 	g_Config.bDiscordRichPresence = false;
 	g_Config.bEnableStateUndo = false;
-	g_Config.bFuncReplacements = true;
+	g_Config.bFuncReplacements = cfg.funcReplacements;
 
 	if (!cfg.assetsDir.empty())
 		g_Config.flash0Directory = Path(cfg.assetsDir) / "flash0";

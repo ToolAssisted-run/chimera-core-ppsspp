@@ -179,6 +179,16 @@ Three prior bodies of work exist (see README for links):
             sin/cos/pow/exp2 are not - this shim closes that class of
             cross-build divergence for good. (2026-08-25)
 
+Added 2026-08-25: the full sync-settings surface, 17 entries. Machine: cpuCore,
+pspModel, cpuClock (locked MHz, 0 = game-controlled), ioTiming (fast /
+simulated / umd-slow; upstream's host-clock mode is nondeterministic and not
+offered), firmwareVersion, funcReplacements, encryptSave. System parameters
+games read: language, nickname, buttonPreference, timeZone, daylightSavings,
+macAddress, dateFormat, timeFormat, parentalLevel. Clock: rtcBase. One shared
+applier (pspdrv_apply_setting) serves the guest adapter and run-native's
+generic --set key=value, so the two sides parse identically; a six-setting
+combined run changes the machine and stays native == sandbox bit-identical.
+
 Added 2026-08-25: the "rtcBase" sync setting - the console's clock at
 power-on (YYYY-MM-DD HH:MM:SS, default the sandbox epoch), parsed with plain
 civil-date arithmetic and fed to the pinned RTC base. A different clock is a

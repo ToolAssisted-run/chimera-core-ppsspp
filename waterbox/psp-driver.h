@@ -32,6 +32,24 @@ struct PspDrvConfig {
 	// constant clock the box reports. Emulated time advances from here with
 	// emulation, never with the host.
 	int64_t rtcBaseSeconds = 1495889068;
+	// Locked CPU clock in MHz; 0 = unlocked (the game sets it, 222 default).
+	int lockedCpuSpeed = 0;
+	// I/O timing model: 0 fast, 2 simulated, 3 UMD-slow-simulated. (1 = host
+	// timing exists upstream and is nondeterministic; never selectable here.)
+	int ioTimingMethod = 0;
+	// System parameters games read via sceUtility.
+	int timeZoneMinutes = 0;
+	bool daylightSavings = false;
+	int firmwareVersion = 660;
+	std::string macAddress = "12:34:56:78:9A:BC";
+	int dateFormat = 0;   // 0 yyyy-mm-dd, 1 mm-dd-yyyy, 2 dd-mm-yyyy
+	int timeFormat = 0;   // 0 24h, 1 12h
+	int parentalLevel = 9;
+	// HLE replacement of known functions (memcpy etc): faster, less
+	// hardware-exact timing.
+	bool funcReplacements = true;
+	// Kirk-encrypt savedata like a real PSP.
+	bool encryptSave = true;
 	// Console-style logging to stderr for debugging.
 	bool verboseLog = false;
 	// Collect the emulated printf/debug output (pspautotests protocol).
@@ -44,6 +62,12 @@ struct PspDrvInput {
 	// sceCtrl supports it (used by remasters/emulator extensions).
 	int8_t leftX = 0, leftY = 0, rightX = 0, rightY = 0;
 };
+
+// Apply one named setting (the waterbox.config surface) to the config.
+// Returns false for an unknown key or unparseable value; one implementation
+// for the guest adapter and the native reference, so the two sides can never
+// drift.
+bool pspdrv_apply_setting(PspDrvConfig &cfg, const char *key, const char *value);
 
 // Parse "YYYY-MM-DD HH:MM:SS" into seconds since the Unix epoch with plain
 // civil-date arithmetic (no libc time machinery - identical everywhere).

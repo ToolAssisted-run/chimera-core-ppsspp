@@ -68,33 +68,19 @@ ECL_EXPORT int Init(void)
 
 	// Sync settings: everything that shapes the machine, read once from the
 	// mounted "settings" channel (the package defaults overlaid with the
-	// user's choices; movies record them).
+	// user's choices; movies record them). One shared applier
+	// (pspdrv_apply_setting) serves this adapter and the native reference.
 	{
-		char buf[128];
-		if (wbx_setting_str("cpuCore", buf, sizeof buf) >= 0) {
-			if (strcmp(buf, "jit") == 0) cfg.cpuCore = 1;          // CPUCore::JIT
-			else if (strcmp(buf, "interpreter") == 0) cfg.cpuCore = 0;
-			// anything else stays the IR interpreter (2)
-		}
-		if (wbx_setting_str("pspModel", buf, sizeof buf) >= 0 && strcmp(buf, "psp-1000") == 0)
-			cfg.pspModel = 0;
-		static const char *kLangs[12] = {
-			"japanese", "english", "french", "spanish", "german", "italian",
-			"dutch", "portuguese", "russian", "korean",
-			"chinese-traditional", "chinese-simplified",
+		static const char *const kKeys[] = {
+			"cpuCore", "pspModel", "language", "nickname", "buttonPreference",
+			"rtcBase", "cpuClock", "ioTiming", "timeZone", "daylightSavings",
+			"firmwareVersion", "macAddress", "dateFormat", "timeFormat",
+			"parentalLevel", "funcReplacements", "encryptSave",
 		};
-		if (wbx_setting_str("language", buf, sizeof buf) >= 0)
-			for (int i = 0; i < 12; i++)
-				if (strcmp(buf, kLangs[i]) == 0) { cfg.language = i; break; }
-		if (wbx_setting_str("nickname", buf, sizeof buf) >= 0 && buf[0])
-			cfg.nickName = buf;
-		if (wbx_setting_str("buttonPreference", buf, sizeof buf) >= 0 && strcmp(buf, "circle") == 0)
-			cfg.buttonPreference = 0;  // PSP_SYSTEMPARAM_BUTTON_CIRCLE
-		if (wbx_setting_str("rtcBase", buf, sizeof buf) >= 0) {
-			int64_t t = pspdrv_parse_datetime(buf);
-			if (t >= 0)
-				cfg.rtcBaseSeconds = t;
-		}
+		char buf[128];
+		for (size_t i = 0; i < sizeof(kKeys) / sizeof(kKeys[0]); i++)
+			if (wbx_setting_str(kKeys[i], buf, sizeof buf) >= 0)
+				pspdrv_apply_setting(cfg, kKeys[i], buf);
 	}
 
 	std::string err;

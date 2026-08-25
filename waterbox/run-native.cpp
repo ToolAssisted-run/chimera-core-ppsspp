@@ -93,6 +93,7 @@ int main(int argc, char **argv) {
 	int pspModel = 1;
 	int cpuCore = 2;
 	const char *rtcBase = nullptr;
+	std::vector<const char *> sets;
 	unsigned long sliceOff = 0, sliceLen = 0;
 	int frames = 60;
 	bool autotest = false, verbose = false, gate = false;
@@ -108,6 +109,7 @@ int main(int argc, char **argv) {
 		else if (!strcmp(argv[i], "--root") && i + 1 < argc) root = argv[++i];
 		else if (!strcmp(argv[i], "--psp-model") && i + 1 < argc) pspModel = strcmp(argv[++i], "psp-1000") == 0 ? 0 : 1;
 		else if (!strcmp(argv[i], "--rtc-base") && i + 1 < argc) rtcBase = argv[++i];
+		else if (!strcmp(argv[i], "--set") && i + 1 < argc) sets.push_back(argv[++i]);
 		else if (!strcmp(argv[i], "--cpu") && i + 1 < argc) {
 			++i;
 			cpuCore = !strcmp(argv[i], "jit") ? 1 : !strcmp(argv[i], "interpreter") ? 0 : 2;
@@ -138,6 +140,15 @@ int main(int argc, char **argv) {
 		int64_t t = pspdrv_parse_datetime(rtcBase);
 		if (t < 0) { fprintf(stderr, "bad --rtc-base (want YYYY-MM-DD HH:MM:SS)\n"); return 2; }
 		cfg.rtcBaseSeconds = t;
+	}
+	for (const char *kv : sets) {
+		std::string pair(kv);
+		size_t eq = pair.find('=');
+		if (eq == std::string::npos ||
+		    !pspdrv_apply_setting(cfg, pair.substr(0, eq).c_str(), pair.c_str() + eq + 1)) {
+			fprintf(stderr, "bad --set '%s'\n", kv);
+			return 2;
+		}
 	}
 	cfg.collectDebugOutput = autotest;
 
