@@ -16,7 +16,7 @@ GCCVER := $(shell gcc -dumpfullversion)
 
 include sources.mk
 
-WBFLAGS := -fvisibility=hidden -mcmodel=large -mstack-protector-guard=global \
+WBFLAGS := -fvisibility=hidden -mcmodel=large -mstack-protector-guard=global -fno-stack-protector \
         -fno-pic -fno-pie -fcf-protection=none -O2
 SPECS   := -specs $(SR)/lib/musl-gcc.specs
 CXXINCS := -I$(SR)/include/c++/$(GCCVER) -I$(SR)/include/c++/$(GCCVER)/x86_64-linux-musl

@@ -83,5 +83,5 @@ if [ "$what" = "guest" ] || [ "$what" = "both" ]; then
 	sr="$mb/build/meson-cpp/guest-sysroot"
 	[ -f "$sr/lib/musl-gcc.specs" ] || { echo "miniBox guest toolchain missing at $sr" >&2; exit 1; }
 	build_flavor guest "gcc -specs $sr/lib/musl-gcc.specs" \
-		"-O2 -fvisibility=hidden -mcmodel=large -mstack-protector-guard=global -fno-pic -fno-pie -fcf-protection=none"
+		"-O2 -fvisibility=hidden -mcmodel=large -mstack-protector-guard=global -fno-stack-protector -fno-pic -fno-pie -fcf-protection=none"
 fi

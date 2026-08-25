@@ -71,6 +71,7 @@ g++ -specs "$sr/lib/musl-gcc.specs" -mcmodel=large -fno-pic -fno-pie \
 	"$here"/obj-guest/ffmpeg/lib/libswscale.a "$here"/obj-guest/ffmpeg/lib/libswresample.a \
 	"$here"/obj-guest/ffmpeg/lib/libavutil.a \
 	-L"$sr/lib" -lstdc++ -lgcc -lgcc_eh -lc
+sh "$mb/source/guest/check-wbx.sh" "$out/core.wbx"
 echo "built $out/core.wbx"
 
 # What built this guest, for the package to carry. Functions of the INPUTS only:
