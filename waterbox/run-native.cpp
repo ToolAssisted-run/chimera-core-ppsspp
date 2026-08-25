@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
 	const char *moviePath = nullptr;
 	const char *savedataOut = nullptr;
 	int pspModel = 1;
-	int cpuCore = 2;
+	int cpuCore = 1; // matches the declared default (waterbox.config: jit)
 	const char *rtcBase = nullptr;
 	std::vector<const char *> sets;
 	unsigned long sliceOff = 0, sliceLen = 0;

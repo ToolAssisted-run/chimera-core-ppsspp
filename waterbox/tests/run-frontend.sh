@@ -98,14 +98,17 @@ for rom in "${roms[@]}"; do
 	name="${name%.*}"
 	if [ ! -f "$rom" ]; then report "$name" SKIP "file not found"; continue; fi
 
-	settings_config "$work/config.$name.ini" '{}'
+	# The RAM-slice comparison needs the IR interpreter on both sides: the
+	# default JIT writes build-specific emuhack opcodes into RAM (the other
+	# legs ride the jit default - both of their sides are the guest build).
+	settings_config "$work/config.$name.ini" '{"cpuCore": "ir-interpreter"}'
 
 	# --- the machine the frontend builds must be the one the gate signed off on ---
 	# The frontend mounts the file under the fixed name "rom", and the filename
 	# leaks into the machine (the fake DiscID); boot the native reference from a
 	# copy with that exact name so both sides see the same string.
 	cp "$rom" "$work/rom"
-	if ! "$wb/bin/run-native" "$work/rom" --frames "$frames" \
+	if ! "$wb/bin/run-native" "$work/rom" --frames "$frames" --cpu ir-interpreter \
 		--ram-slice 0x800000 0x10000 "$work/$name.native.slice.bin" \
 		> "$work/$name.native.txt" 2>"$work/$name.native.err"; then
 		report "$name:frontend" FAIL "native runner error: $(head -1 "$work/$name.native.err")"; continue

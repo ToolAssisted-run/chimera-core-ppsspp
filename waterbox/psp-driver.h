@@ -17,7 +17,8 @@ struct PspDrvConfig {
 	// If set, mounted as host0:/umd0: (pspautotests convention).
 	std::string mountRoot;
 	// CPU core: 0 = interpreter, 1 = JIT, 2 = IR interpreter (matches CPUCore).
-	int cpuCore = 2;
+	// The default matches waterbox.config's cpuCore default: jit.
+	int cpuCore = 1;
 	// Fixed worker-thread count (determinism: never derive from the machine).
 	int threads = 2;
 	// PSP model: 0 = PSP-1000, 1 = Slim (more RAM).

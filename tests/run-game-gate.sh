@@ -25,10 +25,15 @@ mkdir -p "$work"
 
 filter() { grep -E '^(videoHash|audioHash|domain\[)'; }
 
+# Full-digest equality needs the IR interpreter: the default JIT writes
+# build-specific emuhack opcodes into RAM (see run-gate.sh's jit leg).
+irset="$work/gate-ir-settings.json"
+printf '{"cpuCore":"ir-interpreter"}' > "$irset"
+
 echo "replaying $(basename "$sol") ($(grep -c '^||' "$sol") frames) over $(basename "$iso")..."
-"$wb/bin/run-native" "$iso" --movie "$sol" --gate 2>/dev/null | filter > "$work/game.native.txt" &
+"$wb/bin/run-native" "$iso" --movie "$sol" --gate --cpu ir-interpreter 2>/dev/null | filter > "$work/game.native.txt" &
 native_pid=$!
-timeout 3600 "$wb/bin/run-wbx" "$wb/bin/core.wbx" "$iso" --movie "$sol" 2>/dev/null | filter > "$work/game.box.txt"
+timeout 3600 "$wb/bin/run-wbx" "$wb/bin/core.wbx" "$iso" --movie "$sol" --settings "$irset" 2>/dev/null | filter > "$work/game.box.txt"
 wait "$native_pid"
 
 if [ ! -s "$work/game.native.txt" ] || [ ! -s "$work/game.box.txt" ]; then
@@ -42,7 +47,7 @@ if ! cmp -s "$work/game.native.txt" "$work/game.box.txt"; then
 fi
 echo "native == sandbox"
 
-timeout 7200 "$wb/bin/run-wbx" "$wb/bin/core.wbx" "$iso" --movie "$sol" --rerecord 2>/dev/null | filter > "$work/game.rr.txt"
+timeout 7200 "$wb/bin/run-wbx" "$wb/bin/core.wbx" "$iso" --movie "$sol" --settings "$irset" --rerecord 2>/dev/null | filter > "$work/game.rr.txt"
 if ! cmp -s "$work/game.box.txt" "$work/game.rr.txt"; then
 	echo "FAIL: rerecord diverges"
 	echo "--- plain"; cat "$work/game.box.txt"
