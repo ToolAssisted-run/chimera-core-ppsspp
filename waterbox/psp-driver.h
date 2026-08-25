@@ -27,6 +27,11 @@ struct PspDrvConfig {
 	std::string nickName = "Chimera";
 	// 0 = Circle confirms (Japanese consoles), 1 = Cross confirms.
 	int buttonPreference = 1;  // PSP_SYSTEMPARAM_BUTTON_CROSS
+	// The console's clock at power-on, seconds since the Unix epoch. The
+	// default is the sandbox epoch (2017-05-27 12:44:28 UTC), matching the
+	// constant clock the box reports. Emulated time advances from here with
+	// emulation, never with the host.
+	int64_t rtcBaseSeconds = 1495889068;
 	// Console-style logging to stderr for debugging.
 	bool verboseLog = false;
 	// Collect the emulated printf/debug output (pspautotests protocol).
@@ -39,6 +44,11 @@ struct PspDrvInput {
 	// sceCtrl supports it (used by remasters/emulator extensions).
 	int8_t leftX = 0, leftY = 0, rightX = 0, rightY = 0;
 };
+
+// Parse "YYYY-MM-DD HH:MM:SS" into seconds since the Unix epoch with plain
+// civil-date arithmetic (no libc time machinery - identical everywhere).
+// Returns -1 if the string does not parse.
+int64_t pspdrv_parse_datetime(const char *s);
 
 // Decode the chimera packed-input u64 (buttons bits 0..11, analog bytes at
 // 16/24 and 32/40) into a driver input. One definition for the guest adapter,

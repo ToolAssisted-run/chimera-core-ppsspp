@@ -174,6 +174,27 @@ static void PinCpuInfo(int threads) {
 extern "C" unsigned __default_stacksize;  // musl internal, one static link away
 #endif
 
+// Read by the CHIMERA_WATERBOX branch of __RtcInit (see patches/): the
+// emulated RTC's base time. Set from the config before PSP_Init runs.
+extern "C" int64_t Chimera_RtcBaseSeconds = 1495889068;
+
+int64_t pspdrv_parse_datetime(const char *str) {
+	int y, mo, d, h, mi, se;
+	if (sscanf(str, "%d-%d-%d %d:%d:%d", &y, &mo, &d, &h, &mi, &se) != 6)
+		return -1;
+	if (mo < 1 || mo > 12 || d < 1 || d > 31 || h < 0 || h > 23 ||
+	    mi < 0 || mi > 59 || se < 0 || se > 59 || y < 1970 || y > 9999)
+		return -1;
+	// days_from_civil (Howard Hinnant): proleptic Gregorian, era arithmetic
+	int64_t yy = y - (mo <= 2 ? 1 : 0);
+	int64_t era = (yy >= 0 ? yy : yy - 399) / 400;
+	int64_t yoe = yy - era * 400;
+	int64_t doy = (153 * (mo + (mo > 2 ? -3 : 9)) + 2) / 5 + d - 1;
+	int64_t doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+	int64_t days = era * 146097 + doe - 719468;
+	return days * 86400 + h * 3600 + mi * 60 + se;
+}
+
 // ---------------------------------------------------------------------------
 // Boot / shutdown
 // ---------------------------------------------------------------------------
@@ -198,6 +219,8 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	// One static link, so we can just set libc's internal default.
 	__default_stacksize = 8u << 20;
 #endif
+
+	Chimera_RtcBaseSeconds = cfg.rtcBaseSeconds;
 
 	PinCpuInfo(cfg.threads);
 	g_threadManager.Init(cfg.threads, cfg.threads);

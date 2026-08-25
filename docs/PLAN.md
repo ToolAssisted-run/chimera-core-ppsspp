@@ -179,6 +179,12 @@ Three prior bodies of work exist (see README for links):
             sin/cos/pow/exp2 are not - this shim closes that class of
             cross-build divergence for good. (2026-08-25)
 
+Added 2026-08-25: the "rtcBase" sync setting - the console's clock at
+power-on (YYYY-MM-DD HH:MM:SS, default the sandbox epoch), parsed with plain
+civil-date arithmetic and fed to the pinned RTC base. A different clock is a
+different machine (rtc.prx digests change), native == sandbox == rerecord
+under any clock, and movies record it like every sync setting.
+
 Decision, 2026-08-25: the frontend keeps mounting the rom under the fixed name
 "rom" and does NOT pass the original filename into the guest. A filename-
 derived machine (PPSSPP's fake DiscIDs for homebrew) would desync a movie the

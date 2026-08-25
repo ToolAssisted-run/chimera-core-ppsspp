@@ -90,6 +90,11 @@ ECL_EXPORT int Init(void)
 			cfg.nickName = buf;
 		if (wbx_setting_str("buttonPreference", buf, sizeof buf) >= 0 && strcmp(buf, "circle") == 0)
 			cfg.buttonPreference = 0;  // PSP_SYSTEMPARAM_BUTTON_CIRCLE
+		if (wbx_setting_str("rtcBase", buf, sizeof buf) >= 0) {
+			int64_t t = pspdrv_parse_datetime(buf);
+			if (t >= 0)
+				cfg.rtcBaseSeconds = t;
+		}
 	}
 
 	std::string err;
