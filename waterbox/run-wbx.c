@@ -111,7 +111,7 @@ static uintptr_t proc(mb_host *h, const char *n)
 
 int main(int argc, char **argv)
 {
-	const char *wbxPath = 0, *romPath = 0, *sramOut = 0, *sramIn = 0, *moviePath = 0, *settingsPath = 0, *ramOut = 0;
+	const char *wbxPath = 0, *romPath = 0, *moviePath = 0, *settingsPath = 0, *ramOut = 0;
 	long frames = 60; int rerecord = 0, blank = 0, plainrom = 0, rewind = 0, axesViaExport = 0;
 	/* extra mounted files, the frontend's firmware channel shape: id=path */
 	const char *fw[24]; int fwCount = 0;
@@ -119,8 +119,6 @@ int main(int argc, char **argv)
 		if (!strcmp(argv[i], "--rerecord")) rerecord = 1;
 		else if (!strcmp(argv[i], "--rewind")) rewind = 1;
 		else if (!strcmp(argv[i], "--plain-rom")) plainrom = 1;
-		else if (!strcmp(argv[i], "--saveram-out") && i + 1 < argc) sramOut = argv[++i];
-		else if (!strcmp(argv[i], "--saveram-in") && i + 1 < argc) sramIn = argv[++i];
 		else if (!strcmp(argv[i], "--movie") && i + 1 < argc) moviePath = argv[++i];
 		else if (!strcmp(argv[i], "--axes-via-export")) axesViaExport = 1;
 		else if (!strcmp(argv[i], "--settings") && i + 1 < argc) settingsPath = argv[++i];
@@ -210,18 +208,6 @@ int main(int argc, char **argv)
 		ptrfn GetLoadError = (ptrfn)proc(h, "GetLoadError");
 		fprintf(stderr, "Init failed: %s\n", (const char *)GetLoadError());
 		return 1;
-	}
-
-	if (sramIn) {
-		FILE *f = fopen(sramIn, "rb");
-		if (!f) { fprintf(stderr, "cannot read %s\n", sramIn); return 1; }
-		fseek(f, 0, SEEK_END); long n = ftell(f); fseek(f, 0, SEEK_SET);
-		ptrfn_i GetPersistentBuffer = (ptrfn_i)proc(h, "GetPersistentBuffer");
-		intfn_i PutPersistent = (intfn_i)proc(h, "PutPersistent");
-		void *dst = (void *)GetPersistentBuffer((int)n);
-		if (!dst || fread(dst, 1, n, f) != (size_t)n) { fprintf(stderr, "saveram-in failed\n"); return 1; }
-		fclose(f);
-		if (!PutPersistent((int)n)) { fprintf(stderr, "core refused the save data\n"); return 1; }
 	}
 
 	framefn FrameAdvance = (framefn)proc(h, "FrameAdvance");
@@ -324,18 +310,6 @@ int main(int argc, char **argv)
 			fwrite((const void *)GetMemoryDomainPtr(0), 1, (size_t)GetMemoryDomainSize(0), f);
 			fclose(f);
 		}
-	}
-
-	if (sramOut) {
-		intfn PersistentSize = (intfn)proc(h, "GetPersistentSize");
-		ptrfn GetPersistent = (ptrfn)proc(h, "GetPersistent");
-		int n = PersistentSize();
-		const void *src = n > 0 ? (const void *)GetPersistent() : 0;
-		FILE *f = fopen(sramOut, "wb");
-		if (!f) { fprintf(stderr, "cannot write %s\n", sramOut); return 1; }
-		if (src) fwrite(src, 1, (size_t)n, f);
-		fclose(f);
-		printf("saveRamBytes=%d\n", src ? n : 0);
 	}
 
 	wbx_deactivate_host(h, &r); wbx_destroy_host(h, &r);
