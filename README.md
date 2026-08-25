@@ -19,8 +19,12 @@ channel, and packages as `build/Cores/ppsspp.zip`. Not yet: real-game (.iso/
 
 All emulation comes from **PPSSPP**, by Henrik Rydgård and contributors, GPL-2.0-or-later,
 vendored unmodified as the submodule [`extern/ppsspp`](extern/ppsspp) (pinned to a release
-tag). The integration layer in `waterbox/` is this repository's own work, under the same
-GPL-2.0-or-later license. Earlier integration attempts this work draws on:
+tag). The integration layer is this repository's own work under the **MIT License**, with
+two GPL-2.0-or-later exceptions: [`patches/`](patches) (modified PPSSPP source) and
+[`waterbox/psp-driver.cpp`](waterbox/psp-driver.cpp) (adapted from PPSSPP's headless and
+libretro hosts). Built artifacts - `core.wbx` and the core package - combine this code
+with PPSSPP and are therefore distributed under the GPL-2.0-or-later; MIT permits that
+combination. See [`LICENSE`](LICENSE). Earlier integration attempts this work draws on:
 
 - the native (non-waterboxed) BizHawk port and its C# interface
   (TASEmulators/BizHawk @ 09029d8d, `ExternalCoreProjects/ppsspp`),
