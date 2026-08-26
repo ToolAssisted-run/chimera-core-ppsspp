@@ -16,6 +16,7 @@
 
 #include <emulibc.h>
 #include <waterbox_settings.h>
+#include <waterbox_slots.h>
 
 #include "memory-assets.h"
 #include "psp-driver.h"
@@ -47,16 +48,20 @@ ECL_EXPORT int Init(void)
 {
 	g_loadError[0] = '\0';
 
-	// The original rom filename, mounted by the driver/frontend so extension
-	// based detection still works; the rom bytes themselves are mounted under
-	// that name. Falls back to plain "rom".
+	// The disc to boot. A chimera project mounts "slots" ({"disc":["name"]},
+	// the file itself mounted under that canonical name - see file_slots.json
+	// and chimera's docs/project.md); without it, the original rom filename
+	// arrives as "rom.name" so extension based detection still works, the
+	// bytes mounted under that name. Falls back to plain "rom".
 	char romName[256] = "rom";
-	if (FILE *f = fopen("rom.name", "rb")) {
-		size_t n = fread(romName, 1, sizeof romName - 1, f);
-		while (n > 0 && (romName[n - 1] == '\n' || romName[n - 1] == '\r'))
-			n--;
-		romName[n] = '\0';
-		fclose(f);
+	if (!wbx_slot_first("disc", romName, sizeof romName)) {
+		if (FILE *f = fopen("rom.name", "rb")) {
+			size_t n = fread(romName, 1, sizeof romName - 1, f);
+			while (n > 0 && (romName[n - 1] == '\n' || romName[n - 1] == '\r'))
+				n--;
+			romName[n] = '\0';
+			fclose(f);
+		}
 	}
 
 	PspDrvConfig cfg;
