@@ -1,0 +1,24 @@
+{
+  "package": "ppsspp",
+  "effectiveTerms": "GPL-2.0-or-later",
+  "commercialUse": "allowed under the GPL",
+  "note": "The built core combines this repository's MIT integration with PPSSPP and is distributed under the GPL-2.0-or-later. The corresponding source of each part is linked below by exact commit.",
+  "components": [
+    {
+      "name": "chimera-core-ppsspp (integration)",
+      "license": "MIT, with GPL-2.0-or-later patches and driver",
+      "url": "https://github.com/ToolAssisted-run/chimera-core-ppsspp",
+      "commit": "{selfCommit}",
+      "file": "LICENSE",
+      "sourceUrl": "https://github.com/ToolAssisted-run/chimera-core-ppsspp/archive/{commit}.tar.gz"
+    },
+    {
+      "name": "PPSSPP",
+      "license": "GPL-2.0-or-later",
+      "url": "https://github.com/hrydgard/ppsspp",
+      "commit": "{submodule:extern/ppsspp}",
+      "file": "extern/ppsspp/LICENSE.TXT",
+      "sourceUrl": "https://github.com/hrydgard/ppsspp/archive/{commit}.tar.gz"
+    }
+  ]
+}
