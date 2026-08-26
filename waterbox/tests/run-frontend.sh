@@ -163,8 +163,21 @@ if [ -f "$ft" ]; then
 	rom="$ft"
 	cp "$wb/../extern/ppsspp/assets/flash0/font/ltn0.pgf" "$work/zh_gb.pgf"
 	settings_config "$work/config.fontbase.ini" '{}'
-	python3 "$here/settings-config.py" "$config" "$work/config.fontfw.ini" '{}' \
-		"{\"zh_gb.pgf\": \"$work/zh_gb.pgf\"}"
+	# sony fonts: the fontSource setting turns every declared font into a
+	# requirement, so the leg provides them all - the bundled files stand in
+	# for dumps (free content), the unshipped zh_gb from the copy above
+	fwmap="$(python3 - "$wb/waterbox.config" "$wb/../extern/ppsspp/assets/flash0/font" "$work/zh_gb.pgf" <<'PYFW'
+import json, os, sys
+cfg = json.load(open(sys.argv[1]))
+fonts, zh = sys.argv[2], sys.argv[3]
+out = {}
+for e in cfg.get("firmware", []):
+    p = os.path.join(fonts, e["id"])
+    out[e["id"]] = p if os.path.exists(p) else zh
+print(json.dumps(out))
+PYFW
+)"
+	python3 "$here/settings-config.py" "$config" "$work/config.fontfw.ini" '{"fontSource": "sony"}' "$fwmap"
 	if run_frontend "fontbase" "$work/config.fontbase.ini" 120 \
 		&& run_frontend "fontfw" "$work/config.fontfw.ini" 120; then
 		h1="$(grep '^ramhash=' "$work/fontbase.meta.txt" | cut -d= -f2)"
