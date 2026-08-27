@@ -11,7 +11,7 @@ Status: **working**. The sandboxed core boots PSP programs, runs deterministical
 digest: video, audio, RAM, VRAM, scratchpad), passes the frontend gate inside
 Chimera itself, embeds its assets (vfpu tables, fonts, PPGe atlas), keeps
 savedata on an in-guest memory stick exported through the persistent-data
-channel, and packages as `build/Cores/ppsspp.zip`. Not yet: real-game (.iso/
+channel, and packages as `build/Cores/ppsspp.chimeraCore`. Not yet: real-game (.iso/
 .pbp) validation, analog input surfaced by the frontend, sync settings, ffmpeg
 (video cutscenes), the x86 JIT. History and details: [`docs/PLAN.md`](docs/PLAN.md).
 
@@ -50,7 +50,7 @@ meson setup build/meson-native && ninja -C build/meson-native
 # the guest: the same sources through miniBox's C++ toolchain, into core.wbx
 sh waterbox/setup-guest.sh && ninja -C build/meson-guest core.wbx
 
-./waterbox/build-package.sh -r <chimera checkout>   # -> <chimera>/build/Cores/ppsspp.zip
+./waterbox/build-package.sh -r <chimera checkout>   # -> <chimera>/build/Cores/ppsspp.chimeraCore
 ```
 
 One `meson.build` describes both: a cross configure IS the guest, a native one

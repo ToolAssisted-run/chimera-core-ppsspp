@@ -178,7 +178,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ppsspp-${{ github.sha }}
-          path: chimera-checkout/build/Cores/ppsspp.zip
+          path: chimera-checkout/build/Cores/ppsspp.chimeraCore
           if-no-files-found: error
 
       - name: Upload the frontend work dir on failure

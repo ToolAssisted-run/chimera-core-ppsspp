@@ -115,7 +115,7 @@ Three prior bodies of work exist (see README for links):
       on light content with the IR interpreter. (2026-08-24)
 - [x] M5 package: waterbox.config (PSP Controller, 480x272, 60000000/1001001,
       empty settings surface for now), default_keybinds.json, deterministic
-      build-package.sh -> <chimera>/build/Cores/ppsspp.zip, and
+      build-package.sh -> <chimera>/build/Cores/ppsspp.chimeraCore, and
       tests/run-frontend.sh GREEN: Chimera loads the package, runs a .prx 120
       frames with a RAM slice byte-identical to the native reference, and
       adopts the package's 12 keybinds. Note: the frontend mounts the file as
