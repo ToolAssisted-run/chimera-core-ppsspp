@@ -39,7 +39,8 @@ emu_exe="$chimera_root/build/Chimera.exe"
 package="$chimera_root/build/Cores/ppsspp.zip"
 [ -f "$emu_exe" ] || { echo "Chimera not built: $emu_exe" >&2; exit 1; }
 [ -f "$package" ] || { echo "package not installed: $package (run ../build-package.sh)" >&2; exit 1; }
-[ -x "$wb/bin/run-native" ] || { echo "native reference not built (run ../build-core.sh)" >&2; exit 1; }
+natdir="$wb/../build/meson-native"
+[ -x "$natdir/run-native" ] || { echo "native reference not built: meson setup build/meson-native && ninja -C build/meson-native" >&2; exit 1; }
 
 work="$here/work"
 mkdir -p "$work"
@@ -108,7 +109,7 @@ for rom in "${roms[@]}"; do
 	# leaks into the machine (the fake DiscID); boot the native reference from a
 	# copy with that exact name so both sides see the same string.
 	cp "$rom" "$work/rom"
-	if ! "$wb/bin/run-native" "$work/rom" --frames "$frames" --cpu ir-interpreter \
+	if ! "$natdir/run-native" "$work/rom" --frames "$frames" --cpu ir-interpreter \
 		--ram-slice 0x800000 0x10000 "$work/$name.native.slice.bin" \
 		> "$work/$name.native.txt" 2>"$work/$name.native.err"; then
 		report "$name:frontend" FAIL "native runner error: $(head -1 "$work/$name.native.err")"; continue
@@ -214,7 +215,7 @@ else
 		> "$work/sd.engine.log" 2>&1
 	# run-wbx resolves its own libminiboxhost; the frontend's dll dir must not
 	# shadow it through the LD_LIBRARY_PATH this script exports
-	LD_LIBRARY_PATH="" timeout 600 "$wb/bin/run-wbx" "$wb/bin/core.wbx" "$sd" 20 --plain-rom \
+	LD_LIBRARY_PATH="" timeout 600 "$natdir/run-wbx" "$gstdir/core.wbx" "$sd" 20 --plain-rom \
 		--savedata-out "$work/sd.box" > "$work/sd.box.log" 2>&1
 	nfiles="$(find "$work/sd.engine" -type f 2>/dev/null | wc -l)"
 	if [ "$nfiles" -eq 0 ]; then

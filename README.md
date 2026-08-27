@@ -38,17 +38,24 @@ combination. See [`LICENSE`](LICENSE). Earlier integration attempts this work dr
 |---|---|
 | `extern/ppsspp` | upstream PPSSPP, pinned, unmodified |
 | `patches/` | the (small) patch series applied onto the submodule at build time |
-| `waterbox/` | the integration layer: driver, guest ABI adapter, build scripts, gate |
+| `waterbox/` | the integration layer: driver, guest ABI adapter, the source set, gate |
 | `docs/` | the porting plan and design notes |
 
 ## Building
 
 ```sh
-cd waterbox
-./build-native.sh          # host build of the curated source set + driver (the reference)
-./build-core.sh            # core.wbx via miniBox's C++ guest toolchain
-./build-package.sh -r <chimera checkout>   # -> <chimera>/build/Cores/ppsspp.zip
+# the native reference: the curated source set + driver, built for the host
+meson setup build/meson-native && ninja -C build/meson-native
+
+# the guest: the same sources through miniBox's C++ toolchain, into core.wbx
+sh waterbox/setup-guest.sh && ninja -C build/meson-guest core.wbx
+
+./waterbox/build-package.sh -r <chimera checkout>   # -> <chimera>/build/Cores/ppsspp.zip
 ```
+
+One `meson.build` describes both: a cross configure IS the guest, a native one
+is the reference. Which upstream sources they compile is answered in one place,
+`waterbox/sources.sh`.
 
 The C++ guest toolchain comes from a miniBox checkout built with
 `meson setup build/meson-cpp -Dguest_cpp=true && ninja -C build/meson-cpp`.

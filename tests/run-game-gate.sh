@@ -17,8 +17,10 @@ sol="${2:-$here/betabloc.sol}"
 
 [ -f "$iso" ] || { echo "SKIP: no game image at $iso"; exit 0; }
 [ -f "$sol" ] || { echo "no movie at $sol" >&2; exit 1; }
-[ -x "$wb/bin/run-native" ] || { echo "build the native reference first (make -f native.mk native)" >&2; exit 1; }
-[ -f "$wb/bin/core.wbx" ] || { echo "build the core first (./build-core.sh)" >&2; exit 1; }
+natdir="$wb/../build/meson-native"
+gstdir="$wb/../build/meson-guest"
+[ -x "$natdir/run-native" ] || { echo "build the native reference first: meson setup build/meson-native && ninja -C build/meson-native" >&2; exit 1; }
+[ -f "$gstdir/core.wbx" ] || { echo "build the core first: sh waterbox/setup-guest.sh && ninja -C build/meson-guest core.wbx" >&2; exit 1; }
 
 work="$here/work"
 mkdir -p "$work"
@@ -31,9 +33,9 @@ irset="$work/gate-ir-settings.json"
 printf '{"cpuCore":"ir-interpreter"}' > "$irset"
 
 echo "replaying $(basename "$sol") ($(grep -c '^||' "$sol") frames) over $(basename "$iso")..."
-"$wb/bin/run-native" "$iso" --movie "$sol" --gate --cpu ir-interpreter 2>/dev/null | filter > "$work/game.native.txt" &
+"$natdir/run-native" "$iso" --movie "$sol" --gate --cpu ir-interpreter 2>/dev/null | filter > "$work/game.native.txt" &
 native_pid=$!
-timeout 3600 "$wb/bin/run-wbx" "$wb/bin/core.wbx" "$iso" --movie "$sol" --settings "$irset" 2>/dev/null | filter > "$work/game.box.txt"
+timeout 3600 "$natdir/run-wbx" "$gstdir/core.wbx" "$iso" --movie "$sol" --settings "$irset" 2>/dev/null | filter > "$work/game.box.txt"
 wait "$native_pid"
 
 if [ ! -s "$work/game.native.txt" ] || [ ! -s "$work/game.box.txt" ]; then
@@ -47,7 +49,7 @@ if ! cmp -s "$work/game.native.txt" "$work/game.box.txt"; then
 fi
 echo "native == sandbox"
 
-timeout 7200 "$wb/bin/run-wbx" "$wb/bin/core.wbx" "$iso" --movie "$sol" --settings "$irset" --rerecord 2>/dev/null | filter > "$work/game.rr.txt"
+timeout 7200 "$natdir/run-wbx" "$gstdir/core.wbx" "$iso" --movie "$sol" --settings "$irset" --rerecord 2>/dev/null | filter > "$work/game.rr.txt"
 if ! cmp -s "$work/game.box.txt" "$work/game.rr.txt"; then
 	echo "FAIL: rerecord diverges"
 	echo "--- plain"; cat "$work/game.box.txt"

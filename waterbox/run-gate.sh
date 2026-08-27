@@ -5,13 +5,18 @@
 # machine round-tripped through save/load state around EVERY frame, requiring
 # the digests to come out unchanged.
 #
-# Usage: ./run-gate.sh [-f frames] [file...]
+# Usage: ./run-gate.sh [-n <native build dir>] [-g <guest build dir>] [-f frames] [file...]
 #   With no files, runs a small default set from pspautotests (free content).
 set -u
 here="$(cd "$(dirname "$0")" && pwd)"
+root="$(cd "$here/.." && pwd)"
+natdir="$root/build/meson-native"
+gstdir="$root/build/meson-guest"
 frames=120
-while getopts "f:" opt; do
+while getopts "n:g:f:" opt; do
 	case "$opt" in
+		n) natdir="$OPTARG" ;;
+		g) gstdir="$OPTARG" ;;
 		f) frames="$OPTARG" ;;
 		*) exit 2 ;;
 	esac
@@ -22,7 +27,12 @@ shift $((OPTIND - 1))
 # default x86 JIT, emuhack opcodes make native-vs-guest RAM equality
 # impossible by construction (see the jit leg), and an equality gate must not
 # depend on what the default happens to be. The jit leg covers the default.
-irset="$here/bin/.gate-ir-settings.json"
+[ -x "$natdir/run-native" ] && [ -x "$natdir/run-wbx" ] || {
+	echo "native build missing: meson setup build/meson-native && ninja -C build/meson-native" >&2; exit 1; }
+[ -f "$gstdir/core.wbx" ] || {
+	echo "guest build missing: sh waterbox/setup-guest.sh && ninja -C build/meson-guest core.wbx" >&2; exit 1; }
+
+irset="$natdir/.gate-ir-settings.json"
 printf '{"cpuCore":"ir-interpreter"}' > "$irset"
 
 tests="$*"
@@ -35,12 +45,12 @@ fail=0
 for t in $tests; do
 	name="$(basename "$t")"
 	[ -f "$t" ] || { echo "SKIP $name (missing)"; continue; }
-	nat="$("$here/bin/run-native" "$t" --gate --frames "$frames" --cpu ir-interpreter 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	nat="$("$natdir/run-native" "$t" --gate --frames "$frames" --cpu ir-interpreter 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
 	# --axes-via-export: the sandbox run drives the stick through the SetAxis
 	# export the way the frontend does; matching the native packed-analog run
 	# proves the two input paths land the same machine.
-	box="$(timeout 600 "$here/bin/run-wbx" "$here/bin/core.wbx" "$t" "$frames" --axes-via-export --settings "$irset" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
-	rr="$(timeout 900 "$here/bin/run-wbx" "$here/bin/core.wbx" "$t" "$frames" --rerecord --axes-via-export --settings "$irset" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	box="$(timeout 600 "$natdir/run-wbx" "$gstdir/core.wbx" "$t" "$frames" --axes-via-export --settings "$irset" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	rr="$(timeout 900 "$natdir/run-wbx" "$gstdir/core.wbx" "$t" "$frames" --rerecord --axes-via-export --settings "$irset" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
 	if [ -z "$nat" ] || [ -z "$box" ]; then
 		echo "FAIL $name (a run produced no digests)"; fail=1; continue
 	fi
@@ -68,10 +78,10 @@ jt="$here/../extern/ppsspp/pspautotests/tests/gpu/triangle/triangle.prx"
 if [ -f "$jt" ]; then
 	jset="$here/../extern/ppsspp/pspautotests/.gate-jit-settings.json"
 	printf '{"cpuCore":"jit"}' > "$jset"
-	jnat="$("$here/bin/run-native" "$jt" --gate --frames "$frames" --cpu jit 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)' | grep -v 'domain\[RAM\]')"
-	jbox_full="$(timeout 600 "$here/bin/run-wbx" "$here/bin/core.wbx" "$jt" "$frames" --settings "$jset" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	jnat="$("$natdir/run-native" "$jt" --gate --frames "$frames" --cpu jit 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)' | grep -v 'domain\[RAM\]')"
+	jbox_full="$(timeout 600 "$natdir/run-wbx" "$gstdir/core.wbx" "$jt" "$frames" --settings "$jset" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
 	jbox="$(printf '%s\n' "$jbox_full" | grep -v 'domain\[RAM\]')"
-	jrr="$(timeout 900 "$here/bin/run-wbx" "$here/bin/core.wbx" "$jt" "$frames" --settings "$jset" --rerecord 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	jrr="$(timeout 900 "$natdir/run-wbx" "$gstdir/core.wbx" "$jt" "$frames" --settings "$jset" --rerecord 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
 	rm -f "$jset"
 	if [ -z "$jnat" ] || [ -z "$jbox" ]; then
 		echo "FAIL jit (a run produced no digests)"; fail=1
@@ -100,10 +110,10 @@ if [ -f "$ft" ]; then
 	fdir="$here/../extern/ppsspp/pspautotests/.gate-fonts"
 	mkdir -p "$fdir"
 	cp "$here/../extern/ppsspp/assets/flash0/font/ltn0.pgf" "$fdir/zh_gb.pgf"
-	fbase="$("$here/bin/run-native" "$ft" --gate --frames "$frames" --cpu ir-interpreter 2>/dev/null | grep '^domain\[RAM\]')"
-	fnat="$("$here/bin/run-native" "$ft" --gate --frames "$frames" --cpu ir-interpreter --font-dir "$fdir" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
-	fbox="$(timeout 600 "$here/bin/run-wbx" "$here/bin/core.wbx" "$ft" "$frames" --axes-via-export --settings "$irset" --firmware "zh_gb.pgf=$fdir/zh_gb.pgf" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
-	frr="$(timeout 900 "$here/bin/run-wbx" "$here/bin/core.wbx" "$ft" "$frames" --rerecord --axes-via-export --settings "$irset" --firmware "zh_gb.pgf=$fdir/zh_gb.pgf" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	fbase="$("$natdir/run-native" "$ft" --gate --frames "$frames" --cpu ir-interpreter 2>/dev/null | grep '^domain\[RAM\]')"
+	fnat="$("$natdir/run-native" "$ft" --gate --frames "$frames" --cpu ir-interpreter --font-dir "$fdir" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	fbox="$(timeout 600 "$natdir/run-wbx" "$gstdir/core.wbx" "$ft" "$frames" --axes-via-export --settings "$irset" --firmware "zh_gb.pgf=$fdir/zh_gb.pgf" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	frr="$(timeout 900 "$natdir/run-wbx" "$gstdir/core.wbx" "$ft" "$frames" --rerecord --axes-via-export --settings "$irset" --firmware "zh_gb.pgf=$fdir/zh_gb.pgf" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
 	rm -rf "$fdir"
 	fnat_ram="$(printf '%s\n' "$fnat" | grep '^domain\[RAM\]')"
 	if [ -z "$fnat" ] || [ -z "$fbox" ]; then
@@ -135,9 +145,9 @@ if [ -f "$sd" ]; then
 	sdir="$here/../extern/ppsspp/pspautotests/.gate-savedata"
 	rm -rf "$sdir"
 	mkdir -p "$sdir"
-	"$here/bin/run-native" "$sd" --gate --frames 20 --cpu ir-interpreter --savedata-out "$sdir/native" >/dev/null 2>&1
-	timeout 600 "$here/bin/run-wbx" "$here/bin/core.wbx" "$sd" 20 --axes-via-export --settings "$irset" --savedata-out "$sdir/box" >/dev/null 2>&1
-	timeout 900 "$here/bin/run-wbx" "$here/bin/core.wbx" "$sd" 20 --rerecord --axes-via-export --settings "$irset" --savedata-out "$sdir/rr" >/dev/null 2>&1
+	"$natdir/run-native" "$sd" --gate --frames 20 --cpu ir-interpreter --savedata-out "$sdir/native" >/dev/null 2>&1
+	timeout 600 "$natdir/run-wbx" "$gstdir/core.wbx" "$sd" 20 --axes-via-export --settings "$irset" --savedata-out "$sdir/box" >/dev/null 2>&1
+	timeout 900 "$natdir/run-wbx" "$gstdir/core.wbx" "$sd" 20 --rerecord --axes-via-export --settings "$irset" --savedata-out "$sdir/rr" >/dev/null 2>&1
 	nfiles="$(find "$sdir/native" -type f 2>/dev/null | wc -l)"
 	if [ "$nfiles" -eq 0 ]; then
 		echo "FAIL savedata (the machine wrote no save data to export)"; fail=1

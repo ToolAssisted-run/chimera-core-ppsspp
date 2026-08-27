@@ -69,11 +69,17 @@ jobs:
 
       - name: Build the waterbox core
         # also applies patches/ onto the pristine submodule checkout
-        run: ./waterbox/build-core.sh -m "$PWD/chimera-checkout/extern/tools/chimera-common-minibox"
+        run: |
+          mb="$PWD/chimera-checkout/extern/tools/chimera-common-minibox"
+          sh waterbox/setup-guest.sh -m "$mb"
+          ninja -C build/meson-guest core.wbx
 
       - name: Build the native reference
         working-directory: waterbox
-        run: make -f native.mk -j"$(nproc)" native
+        run: |
+          mb="$PWD/chimera-checkout/extern/tools/chimera-common-minibox"
+          meson setup build/meson-native "-Dminibox_dir=$mb"
+          ninja -C build/meson-native
 
       - name: Core gate over free pspautotests
         run: ./waterbox/run-gate.sh
@@ -160,7 +166,10 @@ jobs:
 
       - name: Build the native reference (the gate's comparison side)
         working-directory: waterbox
-        run: make -f native.mk -j"$(nproc)" native
+        run: |
+          mb="$PWD/chimera-checkout/extern/tools/chimera-common-minibox"
+          meson setup build/meson-native "-Dminibox_dir=$mb"
+          ninja -C build/meson-native
 
       - name: Frontend gate
         run: ./waterbox/tests/run-frontend.sh --chimera-root "$GITHUB_WORKSPACE/chimera-checkout"
