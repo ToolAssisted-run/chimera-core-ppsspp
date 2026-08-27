@@ -12,7 +12,7 @@
 set -eu
 here="$(cd "$(dirname "$0")" && pwd)"
 ff="$here/../extern/ppsspp/ffmpeg"
-mb="${MINIBOX_DIR:-$HOME/chimera/extern/miniBox}"
+mb="${MINIBOX_DIR:-$HOME/chimera/extern/chimera-common-minibox}"
 while getopts "m:" opt; do
 	case "$opt" in
 		m) mb="$OPTARG" ;;

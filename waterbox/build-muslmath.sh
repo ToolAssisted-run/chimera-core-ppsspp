@@ -7,7 +7,7 @@
 # cos, pow, exp2 and friends are not.
 set -eu
 here="$(cd "$(dirname "$0")" && pwd)"
-mb="${MINIBOX_DIR:-$HOME/chimera/extern/miniBox}"
+mb="${MINIBOX_DIR:-$HOME/chimera/extern/chimera-common-minibox}"
 mu="$mb/extern/musl"
 sr="$mb/build/meson-cpp/guest-sysroot"
 out="$here/obj-native"

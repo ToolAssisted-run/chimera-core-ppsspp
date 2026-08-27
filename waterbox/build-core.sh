@@ -9,7 +9,7 @@
 # Usage: ./build-core.sh [-m <miniBox dir>] [-o <output dir>] [-j N]
 set -eu
 here="$(cd "$(dirname "$0")" && pwd)"
-mb="${MINIBOX_DIR:-$HOME/chimera/extern/miniBox}"
+mb="${MINIBOX_DIR:-$HOME/chimera/extern/chimera-common-minibox}"
 out="$here/bin"
 jobs="$(nproc)"
 while getopts "m:o:j:" opt; do
