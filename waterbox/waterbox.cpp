@@ -156,10 +156,17 @@ ECL_EXPORT uint32_t *GetVideoBgra(void) { return g_video; }
 ECL_EXPORT int16_t *GetAudio(void) { return g_audio; }
 ECL_EXPORT int GetAudioSampleCount(void) { return g_audioFrames; }
 
-// The PSP's exact refresh rate: 60 * (1.001)^-1... actually 59.9400599...Hz,
-// which is 60000000/1001001 exactly (pixel clock derived).
-ECL_EXPORT int GetVsyncNumerator(void) { return 60000000; }
-ECL_EXPORT int GetVsyncDenominator(void) { return 1001001; }
+// The PSP's refresh rate, as PPSSPP itself models it: sceDisplay sets
+// timePerVblank = 1.001 / 60 seconds, so the machine runs at 60 / 1.001 =
+// 59.94005994...Hz - the same NTSC ratio a PS2 and a Dreamcast run at, and the
+// same one this core's siblings declare.
+//
+// It said 60000000/1001001 for a while, which is 59.94000006Hz: an extra digit
+// in the denominator, about a millionth off. Nothing to watch, but it is the
+// number a movie header records and the number a frontend turns into a running
+// time, so it wants to be the machine's rather than nearly the machine's.
+ECL_EXPORT int GetVsyncNumerator(void) { return 60000; }
+ECL_EXPORT int GetVsyncDenominator(void) { return 1001; }
 
 ECL_EXPORT int InputWasRead(void) { return pspdrv_input_was_read() ? 1 : 0; }
 

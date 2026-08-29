@@ -91,7 +91,7 @@ Three prior bodies of work exist (see README for links):
   fb pointer/stride/format) out of VRAM, convert to BGRA 480x272.
 - Audio: pull a fixed 44100Hz stereo block per frame from `__AudioMix`
   (host-side pull does not feed back into emulation).
-- Vsync: 60000000/1001001 (the PSP's exact 59.9400...Hz), constant.
+- Vsync: 60000/1001 (60/1.001, the rate PPSSPP models), constant.
 
 ## Milestones
 
@@ -113,7 +113,7 @@ Three prior bodies of work exist (see README for links):
       native == sandbox == per-frame-savestate-rerecord, all digests
       (video, audio, RAM, VRAM, scratchpad) bit-identical. ~60fps in-sandbox
       on light content with the IR interpreter. (2026-08-24)
-- [x] M5 package: waterbox.config (PSP Controller, 480x272, 60000000/1001001,
+- [x] M5 package: waterbox.config (PSP Controller, 480x272, 60000/1001,
       empty settings surface for now), default_keybinds.json, deterministic
       build-package.sh -> <chimera>/build/Cores/ppsspp.chimeraCore, and
       tests/run-frontend.sh GREEN: Chimera loads the package, runs a .prx 120
