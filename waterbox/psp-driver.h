@@ -95,6 +95,12 @@ void pspdrv_shutdown();
 // Runs exactly one video frame (one vblank-to-vblank slice).
 void pspdrv_run_frame(const PspDrvInput &input);
 
+// Turbo: while off, the driver does not read the display framebuffer back out
+// of the GPU and does not convert it. The PSP itself is untouched - a PSP draws
+// into memory the game can read, so the DRAWING is part of the machine and is
+// never skipped; what is skipped is the copy out to the outside world.
+void pspdrv_set_rendering(bool on);
+
 // Video: BGRA8888, 480x272, valid until the next run_frame call.
 const uint32_t *pspdrv_video(int *width, int *height);
 

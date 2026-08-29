@@ -3,7 +3,7 @@
  * RAM digests, so the sandboxed build can be compared against run-native on
  * the same inputs.
  *
- * usage: run-wbx <core.wbx> <game> <frames> [--rerecord] [--blank]
+ * usage: run-wbx <core.wbx> <game> <frames> [--rerecord] [--turbo] [--blank]
  *
  * --rerecord round-trips the whole guest machine through save/load state
  *   around every frame; the digests must be identical either way.
@@ -102,6 +102,7 @@ static uint64_t padForFrame(long frame)
 
 typedef int (MB_GUEST_ABI *intfn)(void);
 typedef void (MB_GUEST_ABI *framefn)(uint64_t);
+typedef void (MB_GUEST_ABI *voidfn_i)(int);
 typedef uintptr_t (MB_GUEST_ABI *ptrfn)(void);
 typedef uintptr_t (MB_GUEST_ABI *ptrfn_i)(int);
 typedef int (MB_GUEST_ABI *intfn_i)(int);
@@ -160,11 +161,12 @@ static int exportSaveData(mb_host *h, const char *dir)
 int main(int argc, char **argv)
 {
 	const char *wbxPath = 0, *romPath = 0, *moviePath = 0, *settingsPath = 0, *ramOut = 0, *savedataOut = 0;
-	long frames = 60; int rerecord = 0, blank = 0, plainrom = 0, rewind = 0, axesViaExport = 0;
+	long frames = 60; int rerecord = 0, turbo = 0, blank = 0, plainrom = 0, rewind = 0, axesViaExport = 0;
 	/* extra mounted files, the frontend's firmware channel shape: id=path */
 	const char *fw[24]; int fwCount = 0;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--rerecord")) rerecord = 1;
+		else if (!strcmp(argv[i], "--turbo")) turbo = 1;
 		else if (!strcmp(argv[i], "--rewind")) rewind = 1;
 		else if (!strcmp(argv[i], "--plain-rom")) plainrom = 1;
 		else if (!strcmp(argv[i], "--movie") && i + 1 < argc) moviePath = argv[++i];
@@ -178,7 +180,7 @@ int main(int argc, char **argv)
 		else if (!romPath) romPath = argv[i];
 		else frames = strtol(argv[i], 0, 0);
 	}
-	if (!wbxPath || !romPath) { fprintf(stderr, "usage: run-wbx <core.wbx> <game> <frames> [--rerecord] [--blank]\n"); return 2; }
+	if (!wbxPath || !romPath) { fprintf(stderr, "usage: run-wbx <core.wbx> <game> <frames> [--rerecord] [--turbo] [--blank]\n"); return 2; }
 
 	uint64_t *movie = 0; long movieLen = 0;
 	if (moviePath) {
@@ -260,6 +262,7 @@ int main(int argc, char **argv)
 	}
 
 	framefn FrameAdvance = (framefn)proc(h, "FrameAdvance");
+	voidfn_i SetRenderingEnabled = (voidfn_i)proc(h, "SetRenderingEnabled");
 	/* --axes-via-export drives the stick through the SetAxis export exactly as
 	 * the frontend does; the digests must match the packed-analog path, which
 	 * is what the gate uses this flag to prove. */
@@ -286,6 +289,9 @@ int main(int argc, char **argv)
 	wbx_activate_host(h, &r);
 
 	uint64_t vh = 0, ah = 0;
+	/* the second half of the run, hashed separately: see --turbo */
+	const long tail = frames / 2;
+	uint64_t th = 0;
 	membuf st = {0};
 
 	/* --rewind: the TAS shape of savestates. Run the first half, save, run the
@@ -327,6 +333,10 @@ int main(int argc, char **argv)
 	}
 
 	for (long f = 0; f < frames; f++) {
+		/* turbo: draw nothing for the first half of the run, then draw the
+		 * second half normally - those are the pictures the turbo leg
+		 * compares */
+		if (turbo) SetRenderingEnabled(f >= tail);
 		if (rerecord) {
 			st.len = 0;
 			wbx_save_state(h, mem_write, (uintptr_t)&st, &r);
@@ -340,11 +350,13 @@ int main(int argc, char **argv)
 			FrameAdvance(in);
 		}
 		vh = fnv(vh, (const void *)GetVideoBgra(), 480 * 272 * 4);
+		if (f >= tail) th = fnv(th, (const void *)GetVideoBgra(), 480 * 272 * 4);
 		ah = fnv(ah, (const void *)GetAudio(), (size_t)GetAudioSampleCount() * 4);
 	}
 
 	printf("frames=%ld\n", frames);
 	printf("videoHash=%016llx\n", (unsigned long long)vh);
+	printf("tailVideoHash=%016llx\n", (unsigned long long)th);
 	printf("audioHash=%016llx\n", (unsigned long long)ah);
 	for (int i = 0; i < nd; i++) {
 		const char *dname = (const char *)GetMemoryDomainName(i);

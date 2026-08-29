@@ -51,6 +51,7 @@ static bool g_verboseLog;
 
 static std::vector<uint32_t> g_videoBuf(480 * 272, 0xFF000000u);
 static int g_videoW = 480, g_videoH = 272;
+static bool g_render = true;
 
 // Audio accumulated between frames (interleaved stereo s16 @ 44100).
 static std::vector<int16_t> g_audioAccum;
@@ -572,10 +573,17 @@ void pspdrv_run_frame(const PspDrvInput &input) {
 	if (gpu)
 		gpu->EndHostFrame();
 
-	ReadbackVideo();
+	// Turbo: the frame happened, nobody is going to look at it. The readback
+	// and the format conversion are the only things here that exist purely for
+	// the outside world, so they are what turbo saves; the buffer keeps the
+	// last frame that was read back.
+	if (g_render)
+		ReadbackVideo();
 	g_audioFrame.swap(g_audioAccum);
 	g_audioAccum.clear();
 }
+
+void pspdrv_set_rendering(bool on) { g_render = on; }
 
 const uint32_t *pspdrv_video(int *width, int *height) {
 	if (width) *width = g_videoW;

@@ -64,7 +64,18 @@ for t in $tests; do
 		echo "--- plain"; echo "$box"; echo "--- rerecord"; echo "$rr"
 		fail=1; continue
 	fi
-	echo "PASS $name ($frames frames, native==sandbox==rerecord)"
+	# Turbo: the first half of the run with the core's picture switched off and
+	# the second half back on. What the machine did, what it sounded like and
+	# what it drew once drawing resumed must all be untouched - the whole-run
+	# video hash cannot match, and is the one line left out.
+	tnorm="$(timeout 600 "$natdir/run-wbx" "$gstdir/core.wbx" "$t" "$frames" --axes-via-export --settings "$irset" 2>/dev/null | grep -E '^(tailVideoHash|audioHash|domain\[)')"
+	tturbo="$(timeout 600 "$natdir/run-wbx" "$gstdir/core.wbx" "$t" "$frames" --turbo --axes-via-export --settings "$irset" 2>/dev/null | grep -E '^(tailVideoHash|audioHash|domain\[)')"
+	if [ "$tnorm" != "$tturbo" ]; then
+		echo "FAIL $name (turbo diverges)"
+		echo "--- drawn"; echo "$tnorm"; echo "--- turbo"; echo "$tturbo"
+		fail=1; continue
+	fi
+	echo "PASS $name ($frames frames, native==sandbox==rerecord==turbo)"
 done
 
 # ---- the JIT leg, one test -------------------------------------------------

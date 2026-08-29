@@ -35,6 +35,14 @@ static bool g_inited;
 static int32_t g_axis[2];
 static bool g_axisMode;
 
+/* Turbo. The host sets this to 0 when nobody is going to look at the frame.
+ * ECL_INVISIBLE because it is the frontend's policy for the moment, not part of
+ * the machine: a state saved while fast-forwarding must not put the machine
+ * back into it when it is loaded to be looked at. The driver's own copy of the
+ * flag is ordinary memory and therefore inside the savestate, which is why the
+ * export writes both. */
+ECL_INVISIBLE static int g_render = 1;
+
 // Fixed output buffers, savestated as ordinary guest memory.
 static uint32_t g_video[480 * 272];
 static int16_t g_audio[8192 * 2];
@@ -140,9 +148,12 @@ ECL_EXPORT void FrameAdvance(uint64_t input)
 	}
 	pspdrv_run_frame(in);
 
-	int w, h;
-	const uint32_t *video = pspdrv_video(&w, &h);
-	memcpy(g_video, video, sizeof g_video);
+	if (g_render)
+	{
+		int w, h;
+		const uint32_t *video = pspdrv_video(&w, &h);
+		memcpy(g_video, video, sizeof g_video);
+	}
 
 	int frames;
 	const int16_t *audio = pspdrv_audio(&frames);
@@ -150,6 +161,18 @@ ECL_EXPORT void FrameAdvance(uint64_t input)
 		frames = 8192;
 	g_audioFrames = frames;
 	memcpy(g_audio, audio, (size_t)frames * 2 * sizeof(int16_t));
+}
+
+/* Turbo (optional guest ABI group): while off the core produces no picture and
+ * is otherwise exactly the machine it would have been. On a PSP that means the
+ * readback and the conversion, and NOT the drawing: the GE draws into memory
+ * the game can read back as a texture, so the drawing is part of the machine.
+ * run-gate.sh's turbo leg is the proof - half a run undrawn leaves the same
+ * machine, and the same pictures once drawing resumes. */
+ECL_EXPORT void SetRenderingEnabled(int on)
+{
+	g_render = on != 0;
+	pspdrv_set_rendering(g_render != 0);
 }
 
 ECL_EXPORT uint32_t *GetVideoBgra(void) { return g_video; }
