@@ -57,31 +57,31 @@ jobs:
 
       - name: Check out miniBox
         working-directory: chimera-checkout
-        run: git submodule update --init extern/tools/chimera-common-minibox
+        run: git submodule update --init extern/chimera-common-minibox
 
       - name: Cache the guest toolchain
         uses: actions/cache@v4
         with:
-          path: chimera-checkout/extern/tools/chimera-common-minibox/build/meson-cpp
-          key: guest-cpp-${{ runner.os }}-${{ hashFiles('chimera-checkout/extern/tools/chimera-common-minibox/.git') }}-${{ hashFiles('chimera-checkout/extern/tools/chimera-common-minibox/meson.build') }}
+          path: chimera-checkout/extern/chimera-common-minibox/build/meson-cpp
+          key: guest-cpp-${{ runner.os }}-${{ hashFiles('chimera-checkout/extern/chimera-common-minibox/.git') }}-${{ hashFiles('chimera-checkout/extern/chimera-common-minibox/meson.build') }}
 
       - name: Build miniBox (host + C++ guest toolchain)
         run: |
-          mb="$PWD/chimera-checkout/extern/tools/chimera-common-minibox"
+          mb="$PWD/chimera-checkout/extern/chimera-common-minibox"
           [ -f "$mb/build/meson-cpp/build.ninja" ] || meson setup "$mb/build/meson-cpp" "$mb" -Dguest_cpp=true
           meson compile -C "$mb/build/meson-cpp"
 
       - name: Build the waterbox core
         # also applies patches/ onto the pristine submodule checkout
         run: |
-          mb="$PWD/chimera-checkout/extern/tools/chimera-common-minibox"
+          mb="$PWD/chimera-checkout/extern/chimera-common-minibox"
           sh waterbox/setup-guest.sh -m "$mb"
           ninja -C build/meson-guest core.wbx
 
       - name: Build the native reference
         working-directory: waterbox
         run: |
-          mb="$PWD/chimera-checkout/extern/tools/chimera-common-minibox"
+          mb="$PWD/chimera-checkout/extern/chimera-common-minibox"
           meson setup build/meson-native "-Dminibox_dir=$mb"
           ninja -C build/meson-native
 
@@ -151,12 +151,12 @@ jobs:
       - name: Cache the guest toolchain
         uses: actions/cache@v4
         with:
-          path: chimera-checkout/extern/tools/chimera-common-minibox/build/meson-cpp
-          key: guest-cpp-${{ runner.os }}-${{ hashFiles('chimera-checkout/extern/tools/chimera-common-minibox/.git') }}-${{ hashFiles('chimera-checkout/extern/tools/chimera-common-minibox/meson.build') }}
+          path: chimera-checkout/extern/chimera-common-minibox/build/meson-cpp
+          key: guest-cpp-${{ runner.os }}-${{ hashFiles('chimera-checkout/extern/chimera-common-minibox/.git') }}-${{ hashFiles('chimera-checkout/extern/chimera-common-minibox/meson.build') }}
 
       - name: Build miniBox (host + C++ guest toolchain)
         run: |
-          mb="$PWD/chimera-checkout/extern/tools/chimera-common-minibox"
+          mb="$PWD/chimera-checkout/extern/chimera-common-minibox"
           [ -f "$mb/build/meson-cpp/build.ninja" ] || meson setup "$mb/build/meson-cpp" "$mb" -Dguest_cpp=true
           meson compile -C "$mb/build/meson-cpp"
 
@@ -171,7 +171,7 @@ jobs:
       - name: Build the native reference (the gate's comparison side)
         working-directory: waterbox
         run: |
-          mb="$PWD/chimera-checkout/extern/tools/chimera-common-minibox"
+          mb="$PWD/chimera-checkout/extern/chimera-common-minibox"
           meson setup build/meson-native "-Dminibox_dir=$mb"
           ninja -C build/meson-native
 
