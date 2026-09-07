@@ -164,7 +164,20 @@ else
     link_with: [chdr_deps_lib, chdr_lib, lzmasdk_lib],
     link_args: ffmpeg_libs + [muslmath])
 
-  mbhost = mb / 'build/meson-linux/source/host'
+  # The host library lives in whichever miniBox build dir was configured. The
+  # C flavor (meson-linux) and the C++ flavor (meson-cpp) both build it, and
+  # this core only ever needs the C++ one, so accept either rather than force a
+  # second miniBox build just to get libminiboxhost.so.
+  fs = import('fs')
+  mbhost = ''
+  foreach candidate : ['build/meson-linux', 'build/meson-cpp']
+    if mbhost == '' and fs.exists(mb / candidate / 'source/host/libminiboxhost.so')
+      mbhost = mb / candidate / 'source/host'
+    endif
+  endforeach
+  if mbhost == ''
+    error('no libminiboxhost.so under ' + mb + '/build/{meson-linux,meson-cpp}; build miniBox first')
+  endif
   executable('run-wbx', files('waterbox/run-wbx.c'),
     c_args: ['-I' + mb / 'source/host'],
     link_args: [mbhost / 'libminiboxhost.so', '-Wl,-rpath,' + mbhost])

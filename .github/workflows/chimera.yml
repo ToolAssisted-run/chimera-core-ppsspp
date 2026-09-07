@@ -79,7 +79,6 @@ jobs:
           ninja -C build/meson-guest core.wbx
 
       - name: Build the native reference
-        working-directory: waterbox
         run: |
           mb="$PWD/chimera-checkout/extern/chimera-common-minibox"
           meson setup build/meson-native "-Dminibox_dir=$mb"
@@ -169,7 +168,6 @@ jobs:
         run: ./waterbox/build-package.sh -r "$PWD/chimera-checkout"
 
       - name: Build the native reference (the gate's comparison side)
-        working-directory: waterbox
         run: |
           mb="$PWD/chimera-checkout/extern/chimera-common-minibox"
           meson setup build/meson-native "-Dminibox_dir=$mb"
