@@ -63,12 +63,34 @@ ECL_EXPORT int Init(void)
 	// bytes mounted under that name. Falls back to plain "rom".
 	char romName[256] = "rom";
 	if (!wbx_slot_first("disc", romName, sizeof romName)) {
+		char realName[256] = "";
 		if (FILE *f = fopen("rom.name", "rb")) {
-			size_t n = fread(romName, 1, sizeof romName - 1, f);
-			while (n > 0 && (romName[n - 1] == '\n' || romName[n - 1] == '\r'))
+			size_t n = fread(realName, 1, sizeof realName - 1, f);
+			while (n > 0 && (realName[n - 1] == '\n' || realName[n - 1] == '\r'))
 				n--;
-			romName[n] = '\0';
+			realName[n] = '\0';
 			fclose(f);
+		}
+		// rom.name is the host's own name for the file and says nothing about
+		// where it was mounted: run-wbx writes the mount path itself
+		// ("/game.iso"), the engine writes the bare basename while mounting it
+		// under a leading slash. Boot whichever of the two actually opens, so
+		// the extension PPSSPP identifies the image by is there either way,
+		// and stay on the fixed "rom" mount when neither does. Read-only
+		// mounts may be opened any number of times, so probing costs nothing.
+		if (realName[0] != '\0') {
+			char candidate[300];
+			snprintf(candidate, sizeof candidate, "%s%s",
+				realName[0] == '/' ? "" : "/", realName);
+			FILE *probe = fopen(candidate, "rb");
+			if (!probe) {
+				snprintf(candidate, sizeof candidate, "%s", realName);
+				probe = fopen(candidate, "rb");
+			}
+			if (probe) {
+				fclose(probe);
+				snprintf(romName, sizeof romName, "%s", candidate);
+			}
 		}
 	}
 

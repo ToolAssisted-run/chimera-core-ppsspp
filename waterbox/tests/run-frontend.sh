@@ -40,6 +40,7 @@ package="$chimera_root/build/Cores/ppsspp.chimeraCore"
 [ -f "$emu_exe" ] || { echo "Chimera not built: $emu_exe" >&2; exit 1; }
 [ -f "$package" ] || { echo "package not installed: $package (run ../build-package.sh)" >&2; exit 1; }
 natdir="$wb/../build/meson-native"
+gstdir="$wb/../build/meson-guest"
 [ -x "$natdir/run-native" ] || { echo "native reference not built: meson setup build/meson-native && ninja -C build/meson-native" >&2; exit 1; }
 
 work="$here/work"
@@ -105,11 +106,11 @@ for rom in "${roms[@]}"; do
 	settings_config "$work/config.$name.ini" '{"cpuCore": "ir-interpreter"}'
 
 	# --- the machine the frontend builds must be the one the gate signed off on ---
-	# The frontend mounts the file under the fixed name "rom", and the filename
-	# leaks into the machine (the fake DiscID); boot the native reference from a
-	# copy with that exact name so both sides see the same string.
-	cp "$rom" "$work/rom"
-	if ! "$natdir/run-native" "$work/rom" --frames "$frames" --cpu ir-interpreter \
+	# The filename leaks into the machine (PPSSPP invents a DiscID from it for
+	# a homebrew image), and the engine mounts a directly-opened rom under its
+	# real basename, which is what the guest boots. So the native reference
+	# boots the file under that same basename: its own path, unchanged.
+	if ! "$natdir/run-native" "$rom" --frames "$frames" --cpu ir-interpreter \
 		--ram-slice 0x800000 0x10000 "$work/$name.native.slice.bin" \
 		> "$work/$name.native.txt" 2>"$work/$name.native.err"; then
 		report "$name:frontend" FAIL "native runner error: $(head -1 "$work/$name.native.err")"; continue
@@ -207,6 +208,10 @@ if [ ! -f "$sd" ]; then
 	report "savedata:engine" SKIP "makedata.prx missing"
 elif [ ! -x "$crun" ]; then
 	report "savedata:engine" SKIP "chimera-run not built"
+elif [ ! -f "$gstdir/core.wbx" ]; then
+	# not a SKIP: this leg compares the engine against the standalone sandbox
+	# runner, so without the guest build there is nothing to compare against
+	report "savedata:engine" FAIL "guest build missing: $gstdir/core.wbx"
 else
 	rm -rf "$work/sd.engine" "$work/sd.box"
 	python3 -c "open('$work/sd.movie.txt','w').write(('||    0,    0,............|'+chr(10))*20)"
@@ -214,8 +219,12 @@ else
 		"$package" "$sd" "$work/sd.movie.txt" --export-savedata "$work/sd.engine" ) \
 		> "$work/sd.engine.log" 2>&1
 	# run-wbx resolves its own libminiboxhost; the frontend's dll dir must not
-	# shadow it through the LD_LIBRARY_PATH this script exports
-	LD_LIBRARY_PATH="" timeout 600 "$natdir/run-wbx" "$gstdir/core.wbx" "$sd" 20 --plain-rom \
+	# shadow it through the LD_LIBRARY_PATH this script exports. No --plain-rom:
+	# the engine boots the rom under its real basename, the DiscID follows the
+	# basename, and the savedata tree is named after the DiscID - so the
+	# standalone runner has to mount the same name for the trees to be
+	# comparable at all.
+	LD_LIBRARY_PATH="" timeout 600 "$natdir/run-wbx" "$gstdir/core.wbx" "$sd" 20 \
 		--savedata-out "$work/sd.box" > "$work/sd.box.log" 2>&1
 	nfiles="$(find "$work/sd.engine" -type f 2>/dev/null | wc -l)"
 	if [ "$nfiles" -eq 0 ]; then
