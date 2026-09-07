@@ -150,7 +150,7 @@ else
   # reference must compute with the SAME math or the float decode paths diverge.
   # (That was a real gate failure, not a precaution - see docs/PLAN.md.)
   message('building musl\'s libm for the reference if it is not already built...')
-  run_command(files('waterbox/build-muslmath.sh'), check: true)
+  run_command(files('waterbox/build-muslmath.sh'), '-m', mb, check: true)
   muslmath = meson.current_source_dir() / 'waterbox/obj-native/libmuslmath.a'
 
   threads = dependency('threads')

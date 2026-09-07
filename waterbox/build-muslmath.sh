@@ -5,9 +5,20 @@
 # the two builds - glibc's and musl's transcendentals differ in last-ulp cases,
 # which is enough to diverge decoded PCM. sqrt is IEEE-exact everywhere; sin,
 # cos, pow, exp2 and friends are not.
+#
+# Usage: ./build-muslmath.sh [-m <miniBox dir>]
 set -eu
 here="$(cd "$(dirname "$0")" && pwd)"
 mb="${MINIBOX_DIR:-$HOME/chimera/extern/chimera-common-minibox}"
+while getopts "m:" opt; do
+	case "$opt" in
+		m) mb="$OPTARG" ;;
+		*) exit 2 ;;
+	esac
+done
+shift $((OPTIND - 1))
+[ -d "$mb" ] || { echo "miniBox checkout not found at $mb (pass -m <miniBox dir>)" >&2; exit 1; }
+mb="$(cd "$mb" && pwd)"
 mu="$mb/extern/musl"
 sr="$mb/build/meson-cpp/guest-sysroot"
 out="$here/obj-native"
