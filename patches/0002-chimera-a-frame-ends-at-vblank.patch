@@ -1,0 +1,26 @@
+diff --git a/Core/HW/Display.cpp b/Core/HW/Display.cpp
+--- a/Core/HW/Display.cpp
++++ b/Core/HW/Display.cpp
+@@ -237,9 +237,22 @@
+ 	return false;
+ }
+ 
++#ifdef CHIMERA_WATERBOX
++// chimera: the host is told at every vblank start, which is where a movie
++// frame ENDS (ToolAssisted-run/chimera#58). Weak: a build without a host is
++// unchanged. The host's hook sets coreState so the run loop returns here -
++// PPSSPP's loops stop on a coreState change and on nothing else - instead of
++// at the game's next flip, which may come twice a vblank or once in several.
++extern "C" void chimera_vblank_start(void) __attribute__((weak));
++#endif
++
+ void DisplayFireVblankStart() {
+ 	frameStartTicks = CoreTiming::GetTicks();
+ 	numVBlanks++;
++#ifdef CHIMERA_WATERBOX
++	if (chimera_vblank_start)
++		chimera_vblank_start();
++#endif
+ 
+ 	isVblank = 1;
+ 	vCount++; // vCount increases at each VBLANK.

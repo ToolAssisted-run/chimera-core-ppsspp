@@ -36,6 +36,7 @@
 #include "Core/MemMap.h"
 #include "Core/MIPS/MIPS.h"
 #include "Core/System.h"
+#include "Core/HW/Display.h"
 
 #include "GPU/GPU.h"
 #include "GPU/GPUCommon.h"
@@ -484,6 +485,16 @@ void pspdrv_shutdown() {
 // Frame stepping
 // ---------------------------------------------------------------------------
 
+// Set by the vblank (patch 0002): the frame ends here. The state change is
+// what makes PPSSPP's run loop return; CORE_NEXTFRAME is the one it treats
+// as "come back to the host", and a flip that already set it is left alone.
+static bool g_vblankSeen;
+extern "C" void chimera_vblank_start(void) {
+	g_vblankSeen = true;
+	if (coreState == CORE_RUNNING_CPU)
+		coreState = CORE_NEXTFRAME;
+}
+
 static void ReadbackVideo() {
 	if (!gpuDebug)
 		return;
@@ -559,16 +570,31 @@ void pspdrv_run_frame(const PspDrvInput &input) {
 	if (gpu)
 		gpu->BeginHostFrame(layout);
 
-	coreState = CORE_RUNNING_CPU;
-	PSP_RunLoopWhileState();
-	switch (coreState) {
-	case CORE_NEXTFRAME:
-	case CORE_POWERDOWN:
+	// A FRAME IS ONE VBLANK, not one flip (chimera#58). PPSSPP's own loop ends
+	// a "frame" when the game presents (CORE_NEXTFRAME from __DisplayFlip),
+	// which a game may do twice per vblank with sceDisplaySetFramebuf in
+	// IMMEDIATE mode, or once in several vblanks - Mortal Kombat Unchained
+	// made 107 movie frames a second, and a movie frame that is not a fixed
+	// unit of time has no time. The run loop stops on a coreState change and
+	// on nothing else (a tick target is not honoured), so the vblank itself
+	// sets the state: patch 0002 calls chimera_vblank_start at every vblank
+	// start and that ends the frame. A flip inside the frame is a host-frame
+	// boundary for the GPU (the End/BeginHostFrame pair PPSSPP's own loop
+	// would do there) and nothing more. The declared 60000/1001 is then what
+	// a frame IS.
+	g_vblankSeen = false;
+	for (int guard = 0; !g_vblankSeen && guard < 64; guard++) {
 		coreState = CORE_RUNNING_CPU;
-		break;
-	default:
-		break;
+		PSP_RunLoopWhileState();
+		if (coreState == CORE_NEXTFRAME && !g_vblankSeen && gpu) {
+			gpu->EndHostFrame();
+			gpu->BeginHostFrame(layout);
+		} else if (coreState == CORE_POWERDOWN || coreState == CORE_RUNTIME_ERROR) {
+			break;
+		}
 	}
+	if (coreState == CORE_NEXTFRAME || coreState == CORE_POWERDOWN)
+		coreState = CORE_RUNNING_CPU;
 
 	if (gpu)
 		gpu->EndHostFrame();

@@ -87,7 +87,22 @@ Three prior bodies of work exist (see README for links):
 
 - Input: HLE-level injection like libretro (`__CtrlUpdateButtons`, `__CtrlSetAnalogXY`).
   Lag detection: instrument sceCtrl's read/peek entry points.
-- Video: after `CORE_NEXTFRAME`, read the current display framebuffer (sceDisplay's
+- **A frame is one vblank** (2026-09-19, chimera#58, patch 0002). It used to be
+  "run until `CORE_NEXTFRAME`", which is PPSSPP's own notion - the game
+  PRESENTED - and a game may present twice a vblank (`sceDisplaySetFramebuf`
+  in IMMEDIATE mode flips at once) or once in several: Mortal Kombat
+  Unchained made 107 movie frames a second, so its 27838-frame movie was
+  4:20 long and the site's frames-to-time said 7:43. PPSSPP's run loops stop
+  on a `coreState` change and on nothing else (the tick target handed to
+  `Core_RunLoopUntil` is never compared), so the vblank itself has to set
+  the state: `DisplayFireVblankStart` calls the driver's
+  `chimera_vblank_start`, which makes the run loop return, and a flip that
+  lands inside the frame is a host-frame boundary for the GPU (the
+  End/BeginHostFrame pair PPSSPP's loop would do there) and nothing more.
+  Measured on Crash Tag Team Racing and Ridge Racer: 735.716 audio sample
+  pairs per frame, exactly 44100/59.94, no frame longer. This renumbers every
+  PSP movie made before it (user-decided, 2026-09-19).
+- Video: after the frame, read the current display framebuffer (sceDisplay's
   fb pointer/stride/format) out of VRAM, convert to BGRA 480x272.
 - Audio: pull a fixed 44100Hz stereo block per frame from `__AudioMix`
   (host-side pull does not feed back into emulation).
