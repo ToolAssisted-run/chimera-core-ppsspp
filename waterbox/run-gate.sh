@@ -36,15 +36,31 @@ irset="$natdir/.gate-ir-settings.json"
 printf '{"cpuCore":"ir-interpreter"}' > "$irset"
 
 tests="$*"
+# The default set is content this repository PINS, through the pspautotests
+# submodule. A caller who names files may name ones they do not have, and that
+# is a SKIP; a default that is not there is a leg this gate has lost - a pin
+# bump that moves or renames a path - and it must be a failure, because the
+# alternative is what this script used to do: print one SKIP line and exit 0
+# with nothing whatever tested.
+defaults=0
 if [ -z "$tests" ]; then
+	defaults=1
 	at="$here/../extern/ppsspp/pspautotests/tests"
 	tests="$at/cpu/cpu_alu/cpu_alu.prx $at/gpu/displaylist/state.prx $at/gpu/triangle/triangle.prx $at/threads/mutex/mutex.prx $at/audio/sascore/adsrcurve.prx $at/ctrl/ctrl.prx"
 fi
 
 fail=0
+ran=0
 for t in $tests; do
 	name="$(basename "$t")"
-	[ -f "$t" ] || { echo "SKIP $name (missing)"; continue; }
+	if [ ! -f "$t" ]; then
+		if [ "$defaults" = 1 ]; then
+			echo "FAIL $name (missing: $t - the pinned test set has moved)"; fail=1
+		else
+			echo "SKIP $name (missing)"
+		fi
+		continue
+	fi
 	nat="$("$natdir/run-native" "$t" --gate --frames "$frames" --cpu ir-interpreter 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
 	# --axes-via-export: the sandbox run drives the stick through the SetAxis
 	# export the way the frontend does; matching the native packed-analog run
@@ -76,7 +92,11 @@ for t in $tests; do
 		fail=1; continue
 	fi
 	echo "PASS $name ($frames frames, native==sandbox==rerecord==turbo)"
+	ran=$((ran + 1))
 done
+if [ "$ran" -eq 0 ]; then
+	echo "FAIL gate (not one equivalence leg ran: nothing here was tested)"; fail=1
+fi
 
 # ---- the JIT leg, one test -------------------------------------------------
 # Under the x86 JIT, block linking writes cache-offset "emuhack" opcodes into
@@ -107,6 +127,8 @@ if [ -f "$jt" ]; then
 	else
 		echo "PASS jit (triangle.prx, cross-build minus RAM + guest rerecord on all digests)"
 	fi
+else
+	echo "SKIP jit (no $jt - would prove the x86 JIT equals native on everything but RAM, and is deterministic in the guest)"
 fi
 
 # ---- the fonts leg ---------------------------------------------------------
@@ -142,6 +164,8 @@ if [ -f "$ft" ]; then
 	else
 		echo "PASS fonts (fontlist.prx, provided font shapes the machine, native==sandbox==rerecord)"
 	fi
+else
+	echo "SKIP fonts (no $ft - would prove a font mounted through the firmware channel reaches sceFont)"
 fi
 
 # ---- the savedata leg ------------------------------------------------------
@@ -174,6 +198,8 @@ if [ -f "$sd" ]; then
 		echo "PASS savedata (makedata.prx, $nfiles files, native==sandbox==rerecord trees)"
 	fi
 	rm -rf "$sdir"
+else
+	echo "SKIP savedata (no $sd - would prove the memory stick leaves through the savedata channel, identically in both flavors)"
 fi
 
 rm -f "$irset"
