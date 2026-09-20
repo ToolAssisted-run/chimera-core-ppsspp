@@ -24,7 +24,8 @@ while [ $# -gt 0 ]; do
 done
 
 roms=("$@")
-[ ${#roms[@]} -eq 0 ] && roms=("$wb/../extern/ppsspp/pspautotests/tests/gpu/triangle/triangle.prx")
+pinned=0
+[ ${#roms[@]} -eq 0 ] && { pinned=1; roms=("$wb/../extern/ppsspp/pspautotests/tests/gpu/triangle/triangle.prx"); }
 
 if [ -z "$chimera_root" ]; then
 	for candidate in "$wb/../../chimera" "$HOME/chimera"; do
@@ -72,7 +73,12 @@ sed -i 's/"DispMethod": [0-9]/"DispMethod": 1/' "$config"
 
 ok=0
 failed=0
-report() { printf "%-28s %-9s %s\n" "$1" "$2" "$3"; case "$2" in PASS) ok=$((ok+1)) ;; *) failed=$((failed+1)) ;; esac; }
+skipped=0
+# SKIP had no case of its own, so it fell through to the default and counted
+# as a FAILURE - while the summary printed neither the skips nor any sign that
+# a leg had not been asked. The other four cores' frontend gates count and
+# print all three; this one does now too.
+report() { printf "%-28s %-9s %s\n" "$1" "$2" "$3"; case "$2" in PASS) ok=$((ok+1)) ;; SKIP) skipped=$((skipped+1)) ;; *) failed=$((failed+1)) ;; esac; }
 printf "%-28s %-9s %s\n" "Check" "Result" "Detail"
 printf "%-28s %-9s %s\n" "-----" "------" "------"
 
@@ -98,7 +104,15 @@ settings_config() { python3 "$here/settings-config.py" "$config" "$1" "$2"; }
 for rom in "${roms[@]}"; do
 	name="$(basename "$rom")"
 	name="${name%.*}"
-	if [ ! -f "$rom" ]; then report "$name" SKIP "file not found"; continue; fi
+	# The default rom is pinned content (the pspautotests submodule), so its
+	# absence is a leg this gate has LOST - a pin bump that moved a path - and
+	# not a machine that lacks content. A rom named on the command line is the
+	# caller's own and may legitimately not be there.
+	if [ ! -f "$rom" ]; then
+		if [ "$pinned" = 1 ]; then report "$name" FAIL "missing: $rom - the pinned test program has moved"
+		else report "$name" SKIP "file not found: $rom"; fi
+		continue
+	fi
 
 	# The RAM-slice comparison needs the IR interpreter on both sides: the
 	# default JIT writes build-specific emuhack opcodes into RAM (the other
@@ -237,5 +251,5 @@ else
 fi
 
 echo
-echo "$ok ok, $failed failed"
+echo "$ok ok, $failed failed, $skipped skipped"
 [ "$failed" -eq 0 ]
