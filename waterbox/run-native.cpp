@@ -4,11 +4,13 @@
 //
 // usage: run-native <file> [--frames N] [--autotest] [--verbose]
 //                   [--assets DIR] [--memstick DIR] [--dump-video PREFIX]
+//                   [--seed-savedata ZIP] [--seed-dlc ZIP]... (what Init seeds from the slots)
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 #ifdef _WIN32
@@ -138,6 +140,8 @@ int main(int argc, char **argv) {
 	const char *sliceOut = nullptr;
 	const char *moviePath = nullptr;
 	const char *savedataOut = nullptr;
+	// the project's save data and DLC, as Init seeds them from its slots
+	std::vector<std::pair<const char *, const char *>> seeds;
 	int pspModel = 1;
 	int cpuCore = 1; // matches the declared default (waterbox.config: jit)
 	const char *rtcBase = nullptr;
@@ -164,6 +168,8 @@ int main(int argc, char **argv) {
 		}
 		else if (!strcmp(argv[i], "--font-dir") && i + 1 < argc) fontDir = argv[++i];
 		else if (!strcmp(argv[i], "--savedata-out") && i + 1 < argc) savedataOut = argv[++i];
+		else if (!strcmp(argv[i], "--seed-savedata") && i + 1 < argc) seeds.push_back({ argv[++i], "PSP/SAVEDATA/" });
+		else if (!strcmp(argv[i], "--seed-dlc") && i + 1 < argc) seeds.push_back({ argv[++i], "PSP/GAME/" });
 		else if (!strcmp(argv[i], "--dump-video") && i + 1 < argc) dumpPrefix = argv[++i];
 		else if (!strcmp(argv[i], "--ram-slice") && i + 3 < argc) {
 			sliceOff = strtoul(argv[++i], nullptr, 0);
@@ -229,6 +235,23 @@ int main(int argc, char **argv) {
 		}
 		if (frames == 60)
 			frames = (int)movie.size();
+	}
+
+	for (const auto &seed : seeds) {
+		std::vector<uint8_t> bytes;
+		if (FILE *f = fopen(seed.first, "rb")) {
+			uint8_t chunk[65536];
+			size_t n;
+			while ((n = fread(chunk, 1, sizeof chunk, f)) > 0)
+				bytes.insert(bytes.end(), chunk, chunk + n);
+			fclose(f);
+		}
+		int files = 0;
+		std::string why;
+		if (!Chimera_MemstickSeedZip(bytes.data(), bytes.size(), seed.second, &files, &why)) {
+			fprintf(stderr, "seed %s: %s\n", seed.first, why.c_str());
+			return 1;
+		}
 	}
 
 	std::string err;

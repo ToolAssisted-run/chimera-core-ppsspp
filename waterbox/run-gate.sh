@@ -168,6 +168,65 @@ else
 	echo "SKIP fonts (no $ft - would prove a font mounted through the firmware channel reaches sceFont)"
 fi
 
+# ---- the seeding leg (chimera#161) -----------------------------------------
+# A project's save data and DLC go onto the memory stick before the machine
+# starts, from the "savedata" and "dlc" slots, each a zip: an entry under PSP/
+# where it says (what Export Save Data writes), any other under PSP/SAVEDATA or
+# PSP/GAME. idlist.prx looks for its save files before it makes them, so a
+# seeded one is found; the stick then holds every seeded file, natively, in
+# the sandbox through the slots the frontend mounts, and across a savestate
+# around every frame; a zip that is not one, or reaches outside the stick, is
+# refused by name.
+il="$here/../extern/ppsspp/pspautotests/tests/utility/savedata/idlist.prx"
+if [ -f "$il" ]; then
+	sdir="$(mktemp -d)"
+	python3 - "$sdir" <<'EOF'
+import sys, zipfile
+d = sys.argv[1]
+with zipfile.ZipFile(d + "/save.zip", "w") as z:
+    z.writestr("PSP/SAVEDATA/TEST99901/DATA.BIN", bytes(range(16)))   # as Export Save Data writes it
+    z.writestr("TEST99901F1/DATA.BIN", bytes(range(16, 32)))           # a save folder, bare
+with zipfile.ZipFile(d + "/dlc1.zip", "w") as z:
+    z.writestr("ULUS99999/", b"")
+    z.writestr("ULUS99999/PARAM.PBP", b"DLCDLC")                       # a game's DLC folder, bare
+with zipfile.ZipFile(d + "/dlc2.zip", "w") as z:
+    z.writestr("PSP/GAME/NPUH99999/DLC.EDAT", b"EDATEDAT")
+with zipfile.ZipFile(d + "/evil.zip", "w") as z:
+    z.writestr("../escape.bin", b"x")
+open(d + "/notzip.zip", "wb").write(b"this is not a zip")
+EOF
+	printf '{"savedata":["SAVE.ZIP"],"dlc":["DLC1.ZIP","DLC2.ZIP"]}' > "$sdir/slots.json"
+	printf '{"savedata":["SAVE.ZIP"]}' > "$sdir/slots1.json"
+	# (mktemp's directory has no spaces: the list goes unquoted, this is sh)
+	mounts="--firmware slots=$sdir/slots.json --firmware SAVE.ZIP=$sdir/save.zip --firmware DLC1.ZIP=$sdir/dlc1.zip --firmware DLC2.ZIP=$sdir/dlc2.zip"
+	seen="$("$natdir/run-native" "$il" --autotest --cpu ir-interpreter --seed-savedata "$sdir/save.zip" 2>&1 | grep -c 'File exists: ms0:/PSP/SAVEDATA/TEST99901\(F1\)\?/DATA.BIN')"
+	unseen="$("$natdir/run-native" "$il" --autotest --cpu ir-interpreter 2>&1 | grep -c 'File exists: ms0:/PSP/SAVEDATA/TEST99901\(F1\)\?/DATA.BIN')"
+	"$natdir/run-native" "$il" --gate --frames 5 --cpu ir-interpreter --seed-savedata "$sdir/save.zip" --seed-dlc "$sdir/dlc1.zip" --seed-dlc "$sdir/dlc2.zip" --savedata-out "$sdir/native" >/dev/null 2>&1
+	timeout 600 "$natdir/run-wbx" "$gstdir/core.wbx" "$il" 5 --axes-via-export --settings "$irset" $mounts --savedata-out "$sdir/box" >/dev/null 2>&1
+	timeout 900 "$natdir/run-wbx" "$gstdir/core.wbx" "$il" 5 --rerecord --axes-via-export --settings "$irset" $mounts --savedata-out "$sdir/rr" >/dev/null 2>&1
+	tree="$(cd "$sdir/box" 2>/dev/null && find . -type f | sort | tr '\n' ' ')"
+	want="./PSP/GAME/NPUH99999/DLC.EDAT ./PSP/GAME/ULUS99999/PARAM.PBP ./PSP/SAVEDATA/TEST99901/DATA.BIN ./PSP/SAVEDATA/TEST99901F1/DATA.BIN "
+	refused=""
+	for z in evil notzip; do
+		timeout 300 "$natdir/run-wbx" "$gstdir/core.wbx" "$il" 1 --settings "$irset" --firmware "slots=$sdir/slots1.json" --firmware "SAVE.ZIP=$sdir/$z.zip" 2>&1 |
+			grep -q "Init failed: the save data SAVE.ZIP cannot go on the memory stick: it \(holds '../escape.bin', which is outside the memory stick\|is not a zip\)" && refused="$refused $z"
+	done
+	if [ "$seen" != 2 ] || [ "$unseen" != 0 ]; then
+		echo "FAIL seed (idlist.prx found $seen of the 2 seeded saves; $unseen without them)"; fail=1
+	elif [ "$tree" != "$want" ]; then
+		echo "FAIL seed (the stick holds [$tree], not [$want])"; fail=1
+	elif ! diff -r "$sdir/native" "$sdir/box" >/dev/null 2>&1 || ! diff -r "$sdir/box" "$sdir/rr" >/dev/null 2>&1; then
+		echo "FAIL seed (native, sandbox and rerecord sticks differ)"; fail=1
+	elif [ "$refused" != " evil notzip" ]; then
+		echo "FAIL seed (refused:$refused of evil notzip)"; fail=1
+	else
+		echo "PASS seed (save data and 2 DLC zips on the stick: idlist.prx finds the saves, 4 files native==sandbox==rerecord; a zip reaching outside the stick and one that is no zip refused)"
+	fi
+	rm -rf "$sdir"
+else
+	echo "SKIP seed (no $il - would prove a project's save data and DLC reach the memory stick)"
+fi
+
 # ---- the savedata leg ------------------------------------------------------
 # The memory stick is this core's save data (chimera docs/save-data.md), and
 # the savedata guest ABI group is the user's way out. makedata.prx creates a

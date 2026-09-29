@@ -138,6 +138,44 @@ ECL_EXPORT int Init(void)
 		}
 	}
 
+	// What the memory stick holds when the machine starts (chimera#161): the
+	// project's save data and its DLC, each a zip in its slot, unpacked onto
+	// the RAM stick here - in Init, so inside the sealed baseline, and a
+	// savestate carries only what the game writes afterwards. Each file is
+	// opened once (the VFS contract) and read whole.
+	{
+		static const struct { const char *slot, *under, *what; } kSeeds[] = {
+			{ "savedata", "PSP/SAVEDATA/", "save data" },
+			{ "dlc", "PSP/GAME/", "DLC" },
+		};
+		for (const auto &seed : kSeeds) {
+			for (int i = 0; i < wbx_slot_count(seed.slot); i++) {
+				char name[256];
+				if (!wbx_slot_name(seed.slot, i, name, sizeof name))
+					continue;
+				std::vector<uint8_t> bytes;
+				if (FILE *f = fopen(name, "rb")) {
+					uint8_t chunk[65536];
+					size_t n;
+					while ((n = fread(chunk, 1, sizeof chunk, f)) > 0)
+						bytes.insert(bytes.end(), chunk, chunk + n);
+					fclose(f);
+				} else {
+					snprintf(g_loadError, sizeof g_loadError, "the %s %s is not there", seed.what, name);
+					return 0;
+				}
+				int files = 0;
+				std::string why;
+				if (!Chimera_MemstickSeedZip(bytes.data(), bytes.size(), seed.under, &files, &why)) {
+					snprintf(g_loadError, sizeof g_loadError,
+						"the %s %s cannot go on the memory stick: %s (a zip of the memory stick, as Export Save Data writes it, "
+						"or of the folders to put under %s)", seed.what, name, why.c_str(), seed.under);
+					return 0;
+				}
+			}
+		}
+	}
+
 	std::string err;
 	if (!pspdrv_boot(cfg, &err)) {
 		snprintf(g_loadError, sizeof g_loadError, "%s", err.c_str());

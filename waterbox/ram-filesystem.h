@@ -5,8 +5,10 @@
 // compares like against like.
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <string>
 
 class IFileSystem;
 class IHandleAllocator;
@@ -23,3 +25,16 @@ int32_t Chimera_MemstickExportCount();
 const char *Chimera_MemstickExportName(int32_t index);
 int64_t Chimera_MemstickExportSize(int32_t index);
 const uint8_t *Chimera_MemstickExportData(int32_t index);
+
+// Seeding (chimera#161): what a project puts on the stick before the machine
+// starts, during Init and so inside the sealed baseline - a savestate then
+// carries only what the game writes. A zip's files go onto the stick: an
+// entry already under PSP/ goes where it says (the tree Export Save Data
+// writes, so export-then-import round-trips); any other entry is a folder the
+// user took off a stick - a save ("ULUS10041DATA00/PARAM.SFO") or a game's
+// DLC ("ULUS10336/...") - and goes under `under` ("PSP/SAVEDATA/" or
+// "PSP/GAME/"). False, with *err saying why, for bytes that are no zip, a zip
+// with no file in it, or an entry that climbs out of the stick ("..", an
+// absolute path): a project whose data is silently ignored is worse than one
+// that will not start. *files counts what went on.
+bool Chimera_MemstickSeedZip(const uint8_t *data, size_t len, const char *under, int *files, std::string *err);

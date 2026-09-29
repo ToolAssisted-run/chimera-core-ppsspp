@@ -14,6 +14,11 @@
 #include "Common/Serialize/Serializer.h"
 #include "Core/FileSystems/FileSystem.h"
 #include "Core/HLE/ErrorCodes.h"
+#ifdef SHARED_LIBZIP
+#include <zip.h>
+#else
+#include "ext/libzip/zip.h"
+#endif
 
 #include "ram-filesystem.h"
 
@@ -439,3 +444,107 @@ const uint8_t *Chimera_MemstickExportData(int32_t index) {
 	return data.empty() ? &empty : data.data();
 }
 
+
+// ---- seeding (see ram-filesystem.h) ----------------------------------------
+
+namespace {
+
+// The root and the standard tree, as the filesystem's constructor makes them:
+// a seed may arrive before the machine has ever created the stick.
+void EnsureStandardTree() {
+	auto mk = [](const std::string &norm, bool dir) {
+		std::string key = UpperKey(norm);
+		if (g_nodes.count(key))
+			return;
+		Node n;
+		size_t slash = norm.rfind('/');
+		n.displayName = norm == "/" ? "" : norm.substr(slash + 1);
+		n.displayPath = norm;
+		n.isDirectory = dir;
+		g_nodes[key] = std::move(n);
+	};
+	mk("/", true);
+	for (const char *d : { "/PSP", "/PSP/GAME", "/PSP/SAVEDATA", "/PSP/SYSTEM" })
+		mk(d, true);
+}
+
+// One file at a normalized path, its parents made one level at a time.
+void PutFile(const std::string &norm, const uint8_t *data, size_t len) {
+	size_t pos = 1;
+	while ((pos = norm.find('/', pos)) != std::string::npos) {
+		std::string dir = norm.substr(0, pos);
+		std::string key = UpperKey(dir);
+		if (!g_nodes.count(key)) {
+			Node n;
+			n.displayName = dir.substr(dir.rfind('/') + 1);
+			n.displayPath = dir;
+			n.isDirectory = true;
+			g_nodes[key] = std::move(n);
+		}
+		pos++;
+	}
+	Node f;
+	f.displayName = norm.substr(norm.rfind('/') + 1);
+	f.displayPath = norm;
+	f.isDirectory = false;
+	f.data.assign(data, data + len);
+	g_nodes[UpperKey(norm)] = std::move(f);
+}
+
+}  // namespace
+
+bool Chimera_MemstickSeedZip(const uint8_t *data, size_t len, const char *under, int *files, std::string *err) {
+	*files = 0;
+	zip_error_t zerr;
+	zip_error_init(&zerr);
+	zip_source_t *src = zip_source_buffer_create(data, len, 0, &zerr);
+	zip_t *z = src ? zip_open_from_source(src, ZIP_RDONLY, &zerr) : nullptr;
+	if (!z) {
+		*err = std::string("it is not a zip (") + zip_error_strerror(&zerr) + ")";
+		if (src)
+			zip_source_free(src);
+		zip_error_fini(&zerr);
+		return false;
+	}
+	zip_error_fini(&zerr);
+	EnsureStandardTree();
+	bool ok = true;
+	const zip_int64_t count = zip_get_num_entries(z, 0);
+	for (zip_int64_t i = 0; i < count && ok; i++) {
+		zip_stat_t st;
+		if (zip_stat_index(z, (zip_uint64_t)i, 0, &st) != 0 || !(st.valid & ZIP_STAT_NAME)) {
+			*err = "an entry of it could not be read";
+			ok = false;
+			break;
+		}
+		std::string name = st.name;
+		std::replace(name.begin(), name.end(), '\\', '/');
+		if (name.empty() || name.back() == '/')
+			continue;  // a directory entry: the files under it make it
+		if (name.front() == '/' || name.find("..") != std::string::npos || name.find(':') != std::string::npos) {
+			*err = "it holds '" + std::string(st.name) + "', which is outside the memory stick";
+			ok = false;
+			break;
+		}
+		const bool onStick = UpperKey(name.substr(0, 4)) == "PSP/";
+		const std::string norm = Normalize("/" + (onStick ? name : std::string(under) + name));
+		std::vector<uint8_t> bytes((size_t)st.size);
+		zip_file_t *zf = zip_fopen_index(z, (zip_uint64_t)i, 0);
+		const zip_int64_t got = zf ? zip_fread(zf, bytes.data(), st.size) : -1;
+		if (zf)
+			zip_fclose(zf);
+		if (got != (zip_int64_t)st.size) {
+			*err = "its '" + std::string(st.name) + "' could not be unpacked";
+			ok = false;
+			break;
+		}
+		PutFile(norm, bytes.data(), bytes.size());
+		(*files)++;
+	}
+	zip_close(z);
+	if (ok && *files == 0) {
+		*err = "it holds no file";
+		ok = false;
+	}
+	return ok;
+}

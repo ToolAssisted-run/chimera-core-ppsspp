@@ -11,7 +11,9 @@ Status: **working**. The sandboxed core boots PSP programs, runs deterministical
 digest: video, audio, RAM, VRAM, scratchpad), passes the frontend gate inside
 Chimera itself, embeds its assets (vfpu tables, fonts, PPGe atlas), keeps
 savedata on an in-guest memory stick exported through the persistent-data
-channel, and packages as `build/Cores/ppsspp.chimeraCore`. Not yet: real-game (.iso/
+channel - and a project can put save data and DLC on that stick before the
+machine starts (the Save data and DLC slots, each a zip) - and packages as
+`build/Cores/ppsspp.chimeraCore`. Not yet: real-game (.iso/
 .pbp) validation, analog input surfaced by the frontend, sync settings, ffmpeg
 (video cutscenes), the x86 JIT. History and details: [`docs/PLAN.md`](docs/PLAN.md).
 

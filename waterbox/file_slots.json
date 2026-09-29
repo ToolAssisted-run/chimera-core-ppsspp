@@ -8,6 +8,22 @@
       "max": 1,
       "formats": ["iso", "cso", "pbp", "prx", "elf"],
       "help": "The PSP game: a UMD dump as .iso or compressed .cso, or homebrew (EBOOT .pbp, a raw .prx or .elf)."
+    },
+    {
+      "id": "savedata",
+      "title": "Save data",
+      "min": 0,
+      "max": 1,
+      "formats": ["zip"],
+      "help": "What the memory stick holds already saved when the PSP starts: the zip that Emulator > Export Save Data... writes, put back as it is, or a zip of save folders taken off a memory stick (ULUS10041DATA00, with its PARAM.SFO, icons and the game's files), which go under PSP/SAVEDATA. It is unpacked onto the memory stick before the machine starts, mounted read-only and pinned by hash, and the movie cites it, so a run that starts from a saved game reproduces like one that starts from nothing. Leave it empty and the stick has no saves."
+    },
+    {
+      "id": "dlc",
+      "title": "DLC",
+      "min": 0,
+      "max": -1,
+      "formats": ["zip"],
+      "help": "Downloadable content: a zip of the game's DLC folder as a memory stick holds it (ULUS10336, with the EDAT files and PARAM.PBP inside), which goes under PSP/GAME - or a zip of the memory stick itself, whose PSP/ tree goes where it says. Unpacked onto the memory stick before the machine starts and pinned by hash like the save data. Several zips may be given."
     }
   ]
 }
