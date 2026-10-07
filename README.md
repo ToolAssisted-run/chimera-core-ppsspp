@@ -43,14 +43,23 @@ combination. See [`LICENSE`](LICENSE). Earlier integration attempts this work dr
 | `waterbox/` | the integration layer: driver, guest ABI adapter, the source set, gate |
 | `docs/` | the porting plan and design notes |
 
+## Using it in Chimera
+
+Chimera ships no cores and downloads none. Download `ppsspp-<version>.chimeraCore`
+from this repository's
+[Releases](https://github.com/ToolAssisted-run/chimera-core-ppsspp/releases) page,
+or build it, and put it in Chimera's `Cores` folder: the one beside
+`Chimera.exe`, or the folder chosen in File > Core Manager > Change folder...
+File > Core Manager lists it. The same file works on Linux and on Windows.
+
 ## Building
 
 ```sh
 # the native reference: the curated source set + driver, built for the host
-meson setup build/meson-native && ninja -C build/meson-native
+meson setup build/meson-native -Dminibox_dir=<miniBox> && ninja -C build/meson-native
 
 # the guest: the same sources through miniBox's C++ toolchain, into core.wbx
-sh waterbox/setup-guest.sh && ninja -C build/meson-guest core.wbx
+sh waterbox/setup-guest.sh -m <miniBox> && ninja -C build/meson-guest core.wbx
 
 ./waterbox/build-package.sh -r <chimera checkout>   # -> <chimera>/build/Cores/ppsspp.chimeraCore
 ```
@@ -59,5 +68,9 @@ One `meson.build` describes both: a cross configure IS the guest, a native one
 is the reference. Which upstream sources they compile is answered in one place,
 `waterbox/sources.sh`.
 
-The C++ guest toolchain comes from a miniBox checkout built with
+`<miniBox>` is the Chimera checkout's `extern/chimera-common-minibox`. The C++
+guest toolchain comes from building it with
 `meson setup build/meson-cpp -Dguest_cpp=true && ninja -C build/meson-cpp`.
+
+The full instructions are in [docs/BUILDING.md](docs/BUILDING.md); an AI coding
+agent working here starts at [AGENTS.md](AGENTS.md).
