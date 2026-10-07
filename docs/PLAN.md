@@ -314,10 +314,10 @@ parity via run-native --font-dir DIR; run-wbx mounts via --firmware id=path.
 - Does `PSP_InitStart`'s boot pipeline touch host paths we must fake (config dir,
   memstick dir) before our filesystems are registered? (Headless forces
   `g_Config.memStickDirectory`; we redirect at IFileSystem level.)
-- ffmpeg: NOT used (at3_standalone decodes Atrac3+; video (Mpeg/H.264 in games' PMFs)
-  needs ffmpeg upstream - out of scope initially; sceMpeg without ffmpeg stubs out,
-  some games' cutscenes will be black/skipped. Revisit later (upstream's own
-  ffmpeg fork builds statically; it is big but self-contained).
+- ffmpeg: built from upstream's own fork, statically, for both flavors
+  (`waterbox/build-ffmpeg.sh`, run by meson at configure time), so the video in
+  games' PMFs plays. It was out of scope at first: at3_standalone decodes
+  Atrac3+ without it, and sceMpeg without ffmpeg stubs out.
 - zstd/snappy/zlib: zlib is required (many paths); zstd required by Serializer &
   ReplacedTexture includes even if we never save PPSSPP states - keep, it is small.
 - The old unsolved crash: unknown root cause, was in the dethreaded libretro build on

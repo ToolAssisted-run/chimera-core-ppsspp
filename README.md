@@ -13,9 +13,10 @@ Chimera itself, embeds its assets (vfpu tables, fonts, PPGe atlas), keeps
 savedata on an in-guest memory stick exported through the persistent-data
 channel - and a project can put save data and DLC on that stick before the
 machine starts (the Save data and DLC slots, each a zip) - and packages as
-`build/Cores/ppsspp.chimeraCore`. Not yet: real-game (.iso/
-.pbp) validation, analog input surfaced by the frontend, sync settings, ffmpeg
-(video cutscenes), the x86 JIT. History and details: [`docs/PLAN.md`](docs/PLAN.md).
+`build/Cores/ppsspp.chimeraCore`. It runs PPSSPP's x86 JIT by default (the
+`cpuCore` setting), builds FFmpeg for the video a game plays, and declares the
+analog stick and the machine's settings. History and details:
+[`docs/PLAN.md`](docs/PLAN.md).
 
 ## Credits & provenance
 
