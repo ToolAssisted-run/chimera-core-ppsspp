@@ -227,6 +227,55 @@ else
 	echo "SKIP seed (no $il - would prove a project's save data and DLC reach the memory stick)"
 fi
 
+# ---- a file written in pieces (chimera#212) --------------------------------
+# A truncating open erases nothing on a PSP: the file ends where that handle
+# last wrote, once it is closed, and what was there before can be had back by
+# seeking past it. LittleBigPlanet installs a 4 MiB archive on the stick a
+# megabyte at a time, opening it "truncating" for every piece; the stick used
+# to erase it each time, the game read back zeros and said its save data was
+# corrupt. The first leg needs no game - run-native drives the stick itself.
+pieces="$("$natdir/run-native" --stick-truncate-test 2>&1)"
+if [ "$pieces" = "stick-truncate: ok" ]; then
+	echo "PASS pieces (a file written through truncating opens keeps every piece, and ends where the last one wrote)"
+else
+	echo "FAIL pieces (the memory stick's truncating open)"
+	echo "$pieces" | head -8
+	fail=1
+fi
+
+# The second is the game, when PPSSPP_LBP names its image (UCUS98744): Cross
+# through its two notices, the install, and on into its opening film - the
+# archive on the stick has its first megabyte, and digests and the stick's
+# files are the same native, sandboxed and re-recorded.
+lbp="${PPSSPP_LBP:-}"
+if [ -n "$lbp" ] && [ -f "$lbp" ]; then
+	ldir="$natdir/.gate-lbp"
+	rm -rf "$ldir"
+	mkdir -p "$ldir"
+	lframes=2100
+	awk -v n="$lframes" 'BEGIN { for (f = 0; f < n; f++) printf "||    0,    0,.........%s..|\n", (f >= 300 && f % 120 < 3) ? "X" : "." }' > "$ldir/movie.txt"
+	lnat="$("$natdir/run-native" "$lbp" --gate --frames "$lframes" --movie "$ldir/movie.txt" --cpu ir-interpreter --savedata-out "$ldir/native" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	lbox="$(timeout 900 "$natdir/run-wbx" "$gstdir/core.wbx" "$lbp" "$lframes" --movie "$ldir/movie.txt" --axes-via-export --settings "$irset" --savedata-out "$ldir/box" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	lrr="$(timeout 1800 "$natdir/run-wbx" "$gstdir/core.wbx" "$lbp" "$lframes" --rerecord --movie "$ldir/movie.txt" --axes-via-export --settings "$irset" --savedata-out "$ldir/rr" 2>/dev/null | grep -E '^(videoHash|audioHash|domain\[)')"
+	arc="$ldir/native/PSP/SAVEDATA/UCUS98744INSTALL/GUI.ARC"
+	if [ ! -s "$arc" ]; then
+		echo "FAIL lbp (the game installed no archive on the stick in $lframes frames)"; fail=1
+	elif cmp -s -n 1048576 "$arc" /dev/zero; then
+		echo "FAIL lbp (the installed archive's first megabyte is zeros: the later pieces erased it)"; fail=1
+	elif [ -z "$lnat" ] || [ "$lnat" != "$lbox" ]; then
+		echo "FAIL lbp (native vs sandbox digests differ)"; fail=1
+	elif [ "$lbox" != "$lrr" ]; then
+		echo "FAIL lbp (rerecord digests differ)"; fail=1
+	elif ! diff -r "$ldir/native" "$ldir/box" >/dev/null 2>&1 || ! diff -r "$ldir/box" "$ldir/rr" >/dev/null 2>&1; then
+		echo "FAIL lbp (the stick's files differ between native, sandbox and rerecord)"; fail=1
+	else
+		echo "PASS lbp (LittleBigPlanet installs its archive whole and plays on, $(find "$ldir/native" -type f | wc -l) files, native==sandbox==rerecord over $lframes frames)"
+	fi
+	rm -rf "$ldir"
+else
+	echo "SKIP lbp (PPSSPP_LBP names no image - would prove the game gets past its install, the same in both flavors)"
+fi
+
 # ---- the savedata leg ------------------------------------------------------
 # The memory stick is this core's save data (chimera docs/save-data.md), and
 # the savedata guest ABI group is the user's way out. makedata.prx creates a

@@ -5,6 +5,7 @@
 // usage: run-native <file> [--frames N] [--autotest] [--verbose]
 //                   [--assets DIR] [--memstick DIR] [--dump-video PREFIX]
 //                   [--seed-savedata ZIP] [--seed-dlc ZIP]... (what Init seeds from the slots)
+//        run-native --stick-truncate-test   (the memory stick's rule for a truncating open; no file)
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -18,6 +19,8 @@
 #else
 #include <sys/stat.h>
 #endif
+
+#include "Core/FileSystems/FileSystem.h"
 
 #include "memory-assets.h"
 #include "psp-driver.h"
@@ -130,6 +133,65 @@ static bool writeTga(const char *path, const uint32_t *bgra, int w, int h) {
 	return true;
 }
 
+// --stick-truncate-test: the memory stick with no PSP program on it. A
+// truncating open erases nothing on a PSP; the file ends where that handle
+// last wrote, once it is closed. LittleBigPlanet installs a 4 MiB archive a
+// megabyte at a time, opening it "truncating" for every piece, and read back
+// zeros where the earlier pieces had been (chimera#212).
+static int stickTruncateTest() {
+	SequentialHandleAllocator alloc;
+	std::shared_ptr<IFileSystem> fs = Chimera_CreateRamMemstick(&alloc);
+	const FileAccess writeTrunc = (FileAccess)(FILEACCESS_WRITE | FILEACCESS_CREATE | FILEACCESS_TRUNCATE);
+	const std::string name = "/PSP/SAVEDATA/PIECES.BIN";
+	int bad = 0;
+	auto check = [&](bool ok, const char *what) {
+		if (!ok) {
+			printf("stick-truncate: FAIL %s\n", what);
+			bad++;
+		}
+	};
+	u8 a[1000], b[700], back[2000];
+	memset(a, 0xA5, sizeof a);
+	memset(b, 0x5B, sizeof b);
+
+	// The first piece.
+	int h = fs->OpenFile(name, writeTrunc);
+	check(h > 0, "the file opens");
+	fs->WriteFile((u32)h, a, sizeof a);
+	fs->CloseFile((u32)h);
+	check(fs->GetFileInfo(name).size == 1000, "one piece is 1000 bytes");
+
+	// The second, the way the game writes it: truncating, then past the first.
+	h = fs->OpenFile(name, writeTrunc);
+	check(fs->SeekFile((u32)h, 0, FILEMOVE_END) == 0, "a file just opened truncating ends at 0");
+	fs->SeekFile((u32)h, 1000, FILEMOVE_BEGIN);
+	fs->WriteFile((u32)h, b, sizeof b);
+	fs->CloseFile((u32)h);
+	check(fs->GetFileInfo(name).size == 1700, "two pieces are 1700 bytes");
+	h = fs->OpenFile(name, FILEACCESS_READ);
+	memset(back, 0, sizeof back);
+	check(fs->ReadFile((u32)h, back, sizeof back) == 1700, "both pieces read back");
+	fs->CloseFile((u32)h);
+	check(memcmp(back, a, sizeof a) == 0, "the first piece is still there after the second");
+	check(memcmp(back + 1000, b, sizeof b) == 0, "the second piece follows it");
+
+	// A truncating handle that writes less leaves a shorter file...
+	h = fs->OpenFile(name, writeTrunc);
+	fs->WriteFile((u32)h, b, 10);
+	fs->CloseFile((u32)h);
+	check(fs->GetFileInfo(name).size == 10, "a shorter write leaves a shorter file");
+	// ...reads nothing of what was there before it wrote...
+	h = fs->OpenFile(name, (FileAccess)(FILEACCESS_READ | FILEACCESS_WRITE | FILEACCESS_TRUNCATE));
+	check(fs->ReadFile((u32)h, back, sizeof back) == 0, "a truncating handle reads nothing it did not write");
+	fs->CloseFile((u32)h);
+	// ...and one that writes nothing leaves an empty one.
+	check(fs->GetFileInfo(name).size == 0, "a truncating open that writes nothing leaves an empty file");
+
+	if (!bad)
+		printf("stick-truncate: ok\n");
+	return bad ? 1 : 0;
+}
+
 int main(int argc, char **argv) {
 	const char *file = nullptr;
 	const char *assets = nullptr;
@@ -151,6 +213,7 @@ int main(int argc, char **argv) {
 	bool autotest = false, verbose = false, gate = false;
 
 	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--stick-truncate-test")) return stickTruncateTest();
 		if (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--autotest")) autotest = true;
 		else if (!strcmp(argv[i], "--gate")) gate = true;

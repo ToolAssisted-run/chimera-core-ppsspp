@@ -86,6 +86,13 @@ struct OpenEntry {
 	std::string key;   // upper-cased normalized path
 	unsigned access = 0;
 	s64 pos = 0;
+	// A truncating open does not erase on a PSP: the file ends where this
+	// handle last wrote, and only once it is closed. Until then what was
+	// there can be had back by seeking and writing past it, which is how a
+	// game installs a file in pieces, opening it "truncating" for each one
+	// (LittleBigPlanet's GUI.ARC, chimera#212). PPSSPP's own folder-backed
+	// stick does the same (DirectoryFileHandle::needsTrunc_). -1 = no.
+	s64 truncTo = -1;
 };
 
 // The card itself: like a physical memory stick, its contents survive the
@@ -155,11 +162,11 @@ public:
 			return SCE_KERNEL_ERROR_ERRNO_FILE_ALREADY_EXISTS;
 		}
 		Node &n = nodes_[key];
-		if (access & FILEACCESS_TRUNCATE)
-			n.data.clear();
 		OpenEntry e;
 		e.key = key;
 		e.access = (unsigned)access;
+		if (access & FILEACCESS_TRUNCATE)
+			e.truncTo = 0;
 		e.pos = (access & FILEACCESS_APPEND) ? (s64)n.data.size() : 0;
 		u32 handle = hAlloc_->GetNewHandle();
 		open_[handle] = e;
@@ -167,6 +174,12 @@ public:
 	}
 
 	void CloseFile(u32 handle) override {
+		auto it = open_.find(handle);
+		if (it != open_.end() && it->second.truncTo != -1) {
+			auto n = nodes_.find(it->second.key);
+			if (n != nodes_.end())
+				n->second.data.resize((size_t)it->second.truncTo);
+		}
 		hAlloc_->FreeHandle(handle);
 		open_.erase(handle);
 	}
@@ -181,7 +194,10 @@ public:
 		if (it == open_.end() || size < 0)
 			return 0;
 		Node &n = nodes_[it->second.key];
-		s64 avail = (s64)n.data.size() - it->second.pos;
+		s64 length = (s64)n.data.size();
+		if (it->second.truncTo != -1 && it->second.truncTo < length)
+			length = it->second.truncTo;  // nothing is there yet, as far as a read can tell
+		s64 avail = length - it->second.pos;
 		if (avail < 0)
 			avail = 0;
 		s64 take = size < avail ? size : avail;
@@ -210,6 +226,8 @@ public:
 			n.data.resize(end);
 		memcpy(n.data.data() + it->second.pos, pointer, (size_t)size);
 		it->second.pos += size;
+		if (it->second.truncTo != -1 && it->second.truncTo < it->second.pos)
+			it->second.truncTo = it->second.pos;
 		return (size_t)size;
 	}
 
@@ -222,7 +240,7 @@ public:
 		switch (type) {
 		case FILEMOVE_BEGIN: base = 0; break;
 		case FILEMOVE_CURRENT: base = it->second.pos; break;
-		case FILEMOVE_END: base = (s64)n.data.size(); break;
+		case FILEMOVE_END: base = it->second.truncTo != -1 ? it->second.truncTo : (s64)n.data.size(); break;
 		}
 		s64 np = base + position;
 		if (np < 0)

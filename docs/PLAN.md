@@ -302,6 +302,19 @@ run-frontend.sh grew a firmware leg (the same font provisioned through the
 CoreFirmware config reaches the guest; whole-RAM hash changes). Native
 parity via run-native --font-dir DIR; run-wbx mounts via --firmware id=path.
 
+A truncating open erases nothing (2026-10-08, chimera#212). LittleBigPlanet
+stopped two button presses in with "save data load failed because the data
+is corrupt". It installs a 4 MiB archive on the stick a megabyte at a time,
+and opens the file "truncating" for every piece. On a PSP that open erases
+nothing: the file ends where the handle last wrote, once it is closed, and
+seeking past the earlier pieces has them back. PPSSPP's folder-backed stick
+does the same (`DirectoryFileHandle::needsTrunc_`); ours cleared the file at
+the open, so only the last piece survived and the game read zeros. The RAM
+stick now keeps the same rule, per handle. Proof: gate legs `pieces` (the
+stick alone; fails on the old code) and `lbp` (the game: the archive has its
+first megabyte, native==sandbox==rerecord over 2100 frames; by hand it goes
+on through its film and title into the first level).
+
 ## Test content (no copyrighted ROMs)
 
 - pspautotests (upstream submodule; the `-g` "tests_good" set, ~314 tests, runs under

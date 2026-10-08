@@ -271,6 +271,12 @@ the IR interpreter on both sides. Then:
   a file that is no zip are refused.
 - `savedata` - what the machine saved leaves through the save data export as
   the same tree natively, in the sandbox and with rerecord.
+- `pieces` - a file written through truncating opens keeps every piece (a
+  truncating open erases nothing on a PSP until the handle is closed). No
+  program runs: `run-native --stick-truncate-test` drives the stick itself.
+- `lbp` - with `PPSSPP_LBP` naming a LittleBigPlanet image (UCUS98744), the
+  game installs its archive on the stick whole and plays on, native ==
+  sandbox == rerecord over 2100 frames. Without the image it says `SKIP`.
 
 A default test program that is missing is a FAIL, not a SKIP: the pinned test
 set has moved. A file you name yourself that is missing is a SKIP.
