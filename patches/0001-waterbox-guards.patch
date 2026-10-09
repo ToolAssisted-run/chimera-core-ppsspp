@@ -156,6 +156,26 @@ index a82a1f1ccf..55761d42cb 100644
  
  #if defined(_WIN32) && !PPSSPP_PLATFORM(UWP)
  
+diff --git a/Core/ELF/ElfReader.cpp b/Core/ELF/ElfReader.cpp
+index 1bf565e11b..b53e9bb039 100644
+--- a/Core/ELF/ElfReader.cpp
++++ b/Core/ELF/ElfReader.cpp
+@@ -1091,6 +1091,15 @@ static int LoadSymbolsFromCompanion(const std::string &data, u32 moduleBase, u32
+ }
+ 
+ int LoadCompanionElfDebugInfo(const Path &gameFile, u32 moduleBase, u32 moduleSize) {
++#ifdef CHIMERA_WATERBOX
++	// chimera: no companion is looked for. It would be found by listing the
++	// folder the game is in, and a machine in the sandbox has no folder - a
++	// project mounts the game alone, and listing where it sits is a system
++	// call the sandbox does not provide: the core was killed at boot, for
++	// every game opened through a project (ToolAssisted-run/chimera#228).
++	// Symbols from whatever lies beside a game are not the machine's anyway.
++	return 0;
++#endif
+ 	if (gameFile.empty() || gameFile.Type() != PathType::NATIVE)
+ 		return 0;
+ 
 diff --git a/Core/FileLoaders/LocalFileLoader.cpp b/Core/FileLoaders/LocalFileLoader.cpp
 index 889c30d47e..1b68409583 100644
 --- a/Core/FileLoaders/LocalFileLoader.cpp

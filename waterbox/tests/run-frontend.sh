@@ -250,6 +250,48 @@ else
 	fi
 fi
 
+# A game opened the way every user opens one: through a PROJECT, the file in
+# the disc slot, mounted under its own name. Every other leg here and in
+# run-gate.sh hands the program over as a rom ("/name", with rom.name beside
+# it), and that difference let a core out that could not start a single
+# project: upstream's companion-ELF lookup lists the folder the game is in,
+# a bare name sits in a folder that opens, and reading it is a system call
+# the sandbox does not provide - the guest was killed inside Init
+# (chimera#228; patch 0001 takes the lookup out). The leg writes a project
+# for the pinned triangle.prx and runs 60 frames of it in the engine.
+pj="$wb/../extern/ppsspp/pspautotests/tests/gpu/triangle/triangle.prx"
+if [ ! -f "$pj" ]; then
+	report "project:boot" FAIL "missing: $pj - the pinned test program has moved"
+elif [ ! -x "$crun" ]; then
+	report "project:boot" SKIP "chimera-run not built"
+else
+	rm -rf "$work/project"; mkdir -p "$work/project"
+	cp "$pj" "$work/project/triangle.prx"
+	python3 - "$work/project" <<'PY'
+import hashlib, json, sys
+d = sys.argv[1]
+sha = hashlib.sha1(open(d + "/triangle.prx", "rb").read()).hexdigest().upper()
+keys = "P1 Stick X|P1 Stick Y|P1 Up|P1 Down|P1 Left|P1 Right|P1 Cross|P1 Circle|P1 Square|P1 Triangle|P1 Start|P1 Select|P1 L|P1 R|"
+json.dump({
+    "title": "project boot", "description": "", "rerecords": 0,
+    "core": {"name": "PPSSPP", "version": "", "sha1": ""},
+    "files": [{"name": "triangle.prx", "sha1": sha, "slot": "disc"}],
+    "settings": {}, "firmware": [], "coreCache": [],
+    "headers": {"MovieVersion": "Chimera Project File v1.1", "Platform": "PSP"},
+    "input": "[Input]\nLogKey:#" + keys + "\n" + "||    0,    0,............|\n" * 60 + "[/Input]\n",
+    "markers": [], "branches": [],
+}, open(d + "/p.chimeraProject", "w"), indent=1)
+PY
+	( cd "$chimera_root" && LD_LIBRARY_PATH="$chimera_root/build/dll" timeout 600 "$crun" \
+		--project "$work/project/p.chimeraProject" "$package" --files "$work/project" --allow-core-mismatch ) \
+		> "$work/project.log" 2>&1
+	if grep -q '^frames=60' "$work/project.log"; then
+		report "project:boot" PASS "a program in a project's disc slot boots and runs 60 frames in the engine"
+	else
+		report "project:boot" FAIL "$(grep -m1 'miniBox: \|chimera-run: ' "$work/project.log" | cut -c1-110) (see tests/work/project.log)"
+	fi
+fi
+
 echo
 echo "$ok ok, $failed failed, $skipped skipped"
 [ "$failed" -eq 0 ]

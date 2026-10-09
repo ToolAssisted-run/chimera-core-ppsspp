@@ -380,3 +380,19 @@ survive the move.
 
 **Not shown.** Neither game of the report is here, so the fix itself is
 unproved on them. Gate: 12 passed, 1 skipped, as on the old pin.
+
+**What the gate did not catch, the same day.** The first build on the new pin
+could not start any game opened through a project - which is every game a
+person opens. Upstream's new `LoadCompanionElfDebugInfo` lists the folder the
+game is in, looking for an ELF with debug symbols. Both gates hand the
+program over as a rom, `/name`, whose folder does not open; a project mounts
+it in the disc slot under its bare name, that folder opens, and reading it
+is a system call (getdents64) the sandbox does not provide: the guest was
+killed inside Init and the frontend said "could not load this file". The
+reporter found it in an hour (chimera#228). Patch 0001 takes the lookup out
+of the sandbox build, and the frontend gate has a leg that writes a project
+for the pinned triangle.prx and runs it in the engine (`project:boot`) -
+which fails on the build that was published. The other directory listings
+in Core were there on the old pin too and are not reached. A gate that never
+opens a game the way a user does was the hole, and a new pin is when it
+costs.
