@@ -80,17 +80,19 @@ bool System_GetPropertyBool(SystemProperty prop) {
 	switch (prop) {
 	case SYSPROP_CAN_JIT:
 		return true;
-	case SYSPROP_SKIP_UI:
+	case SYSPROP_IS_HEADLESS:
 		// Headless.cpp says true to skip the PPGe atlas load; we must not. The
-		// atlas is what draws the in-game savedata/utility dialogs, its texture
-		// lives in kernel RAM (machine-shaping), and a real console renders
-		// those dialogs. The atlas ships embedded, so loading it is free.
+		// atlas is what draws the in-game savedata/utility dialogs, and a real
+		// console renders those dialogs. The atlas ships embedded, so loading
+		// it is free.
 		return false;
 	default:
 		return false;
 	}
 }
 void System_Notify(SystemNotification notification) {}
+void System_LaunchUrl(LaunchUrlType urlType, std::string_view url) {}
+std::vector<std::string> System_GetCameraDeviceList() { return std::vector<std::string>(); }
 void System_PostUIMessage(UIMessage message, std::string_view param) {}
 void System_RunOnMainThread(std::function<void()> func) {
 	// There is no separate main thread here; run in place.
@@ -98,16 +100,7 @@ void System_RunOnMainThread(std::function<void()> func) {
 		func();
 }
 bool System_MakeRequest(SystemRequestType type, int requestId, const std::string &param1, const std::string &param2, int64_t param3, int64_t param4) {
-	switch (type) {
-	case SystemRequestType::SEND_DEBUG_OUTPUT:
-		// NOTE: do not collect here; the collectDebugOutput pointer already
-		// receives every chunk (sceIo appends to both paths).
-		if (g_verboseLog)
-			fwrite(param1.data(), 1, param1.size(), stderr);
-		return true;
-	default:
-		return false;
-	}
+	return false;
 }
 void System_AskForPermission(SystemPermission permission) {}
 PermissionStatus System_GetPermissionStatus(SystemPermission permission) { return PERMISSION_STATUS_GRANTED; }
@@ -381,6 +374,13 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	g_Config.iCpuCore = cfg.cpuCore;
 	g_Config.iDumpFileTypes = 0;
 	g_Config.bEnableSound = true;
+	// The SAS mixer on the machine's own thread. The default follows the
+	// host's core count and hands the mix to a HOST thread, whose result
+	// reaches the game's memory when that thread gets round to it: with
+	// upstream's Media Engine scheduling (2026-10 pin) the native reference
+	// and the sandbox then disagreed about a program's RAM (adsrcurve.prx,
+	// from frame 20 on).
+	g_Config.bSeparateSASThread = false;
 	g_Config.bFirstRun = false;
 	g_Config.bIgnoreBadMemAccess = true;
 	g_Config.sReportHost.clear();
@@ -403,7 +403,6 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	g_Config.iLockedCPUSpeed = cfg.lockedCpuSpeed;
 	g_Config.iIOTimingMethod = cfg.ioTimingMethod;
 	g_Config.iInternalResolution = 1;
-	g_Config.bSoftwareSkinning = true;
 	g_Config.bVertexDecoderJit = true;
 	g_Config.bSoftwareRendering = true;
 	g_Config.bSoftwareRenderingJit = true;
@@ -427,7 +426,7 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	g_Config.bFuncReplacements = cfg.funcReplacements;
 
 	if (!cfg.assetsDir.empty())
-		g_Config.flash0Directory = Path(cfg.assetsDir) / "flash0";
+		g_Config.nandRootDirectory = Path(cfg.assetsDir);
 	if (!cfg.memstickDir.empty()) {
 		g_Config.memStickDirectory = Path(cfg.memstickDir);
 		File::CreateDir(g_Config.memStickDirectory);
@@ -452,6 +451,16 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	coreParameter.fastForward = true;
 	if (g_collectDebugOutput)
 		coreParameter.collectDebugOutput = &g_debugOutput;
+	// What the program writes to its stdout and stderr comes through a
+	// listener now (Core_SendHostOutput); the emulator's own debug channel
+	// still reaches collectDebugOutput by itself (sceIo appends there), so it
+	// is not collected twice here.
+	Core_RegisterDebugOutputListeners([](DebugOutputChannel channel, std::string_view text) {
+		if (g_verboseLog)
+			fwrite(text.data(), 1, text.size(), stderr);
+		if (g_collectDebugOutput && channel != DebugOutputChannel::Debug)
+			g_debugOutput.append(text.data(), text.size());
+	}, nullptr);
 
 	if (!PSP_InitStart(coreParameter)) {
 		if (error)
@@ -496,10 +505,10 @@ extern "C" void chimera_vblank_start(void) {
 }
 
 static void ReadbackVideo() {
-	if (!gpuDebug)
+	if (!gpu)
 		return;
 	GPUDebugBuffer buf;
-	if (!gpuDebug->GetCurrentFramebuffer(buf, GPU_DBG_FRAMEBUF_DISPLAY, -1)) {
+	if (!gpu->GetCurrentFramebuffer(buf, GPU_DBG_FRAMEBUF_DISPLAY, -1)) {
 		if (g_verboseLog)
 			fprintf(stderr, "ReadbackVideo: GetCurrentFramebuffer FAILED\n");
 		return;
@@ -623,7 +632,7 @@ const int16_t *pspdrv_audio(int *frames) {
 }
 
 uint64_t pspdrv_cycles() {
-	return (uint64_t)CoreTiming::GetTicks();
+	return (uint64_t)CoreTiming::GetTicks(currentMIPS);
 }
 
 bool pspdrv_input_was_read() {

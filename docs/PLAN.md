@@ -29,7 +29,8 @@ Three prior bodies of work exist (see README for links):
 
 ## Architecture decisions
 
-- **Upstream pin**: `extern/ppsspp` = hrydgard/ppsspp @ v1.20.4 (2026-05-16), unmodified.
+- **Upstream pin**: `extern/ppsspp` = hrydgard/ppsspp @ master 761cf347e6 (2026-10-09), unmodified
+  (v1.20.4 until then; see "The pin moved to master").
   Local changes live in `patches/` (git apply at build time), kept as small as possible;
   prefer solving problems in the adapter. If the series grows, move to a proper fork
   under ToolAssisted-run.
@@ -262,7 +263,7 @@ hashes of Sony's files), so the sha1 lists start empty: a right-sized dump
 loads as "unrecognised - used anyway", and the movie header's Firmware line
 records id=SHA1 for every provided font, with playback warning on mismatch.
 Hashes pinned 2026-08-25 from Sony's final official firmware. Recipe, for
-anyone re-deriving them: PPSSPP master (not our v1.20.4 pin) carries
+anyone re-deriving them: PPSSPP master (not the v1.20.4 pin of that day) carries
 Core/Util/PSARUnpack.cpp, written to pull flash0:/font out of an official
 updater; compiled against our native object set - with master's
 Core/ELF/PrxDecrypter.cpp, whose PSAR tags v1.20.4 lacks - it decrypts the
@@ -336,3 +337,46 @@ on through its film and title into the first level).
 - The old unsolved crash: unknown root cause, was in the dethreaded libretro build on
   BizHawk's waterbox. Not carried forward as a known issue; the architecture that
   produced it (dethreading + libretro + old waterbox) is gone.
+
+## The pin moved to master (user-decided, 2026-10-09, chimera#228)
+
+Asked for: two fixes to video playback that upstream merged after v1.20.4
+(hrydgard/ppsspp#21907 and #22309; Need for Speed: Shift, Obscure: The
+Aftermath). Of cherry-picking them, waiting for v1.20.5 and moving the pin to
+master, the owner chose the last. The pin is 761cf347e6, master on the day.
+
+Upstream had moved a long way - 887 files in the directories this core
+compiles, a new interpreter, a Media Engine with its own scheduling, new
+video and audio codec modules - and the port was small, which is what
+`sources.sh` describing the set by shape was for:
+
+- `ext/minimp3` is gone upstream and from the list; `Core/EmuThread.cpp` and
+  `Core/CmdLine.cpp` are the application's and are left out.
+- Patch 0001 lost its three camera hunks (upstream took the platform cameras
+  out of Core), follows the memory stick's mount from sceIo.cpp to System.cpp
+  and the boot file's from `umd0:` to `host0:`, and gives PortManager.h the
+  two miniupnp types its members now name. Patch 0002 is the same hook.
+- The driver: the PPGe atlas is asked for through `SYSPROP_IS_HEADLESS`, a
+  program's stdout comes through `Core_RegisterDebugOutputListeners`, flash0
+  is under `nandRootDirectory`, and four new symbols are stubbed.
+- FFmpeg's fork moved with the pin and both flavours' builds of it were made
+  again (the old ones are kept beside them as `ffmpeg.stale-2026-10-09`).
+
+**One thing the gate caught.** `adsrcurve.prx` came out with different RAM in
+the two flavours from frame 20 on, each flavour agreeing with itself.
+`SeparateSASThread` defaults to "the host has more than one core" and hands
+the SAS mix to a host thread; with the Media Engine's new scheduling its
+result reached the program's memory at a different moment natively. The
+driver now keeps the mix on the machine's thread, whatever the host.
+
+**What it does to existing movies.** A project is pinned to the package it
+was made with, so nothing made before is replayed on this build unasked. Where
+one is moved over: the committed Beta Bloc movie (4188 frames) is at the same
+menu at frames 1000, 2500 and 4187 on both builds, but its picture, sound and
+RAM digests all differ; The 3rd Birthday, run 5400 frames with Cross pressed
+every 90, is in the same scene at each of six frames on both. The machine is
+not the same in detail, and a movie that leans on exact timing may not
+survive the move.
+
+**Not shown.** Neither game of the report is here, so the fix itself is
+unproved on them. Gate: 12 passed, 1 skipped, as on the old pin.

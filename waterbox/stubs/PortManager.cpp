@@ -5,21 +5,20 @@
 
 PortManager g_PortManager;
 
-PortManager::PortManager() {}
-PortManager::~PortManager() {}
-
-bool PortManager::Initialize(const unsigned int timeout) { return false; }
-int PortManager::GetInitState() { return UPNP_INITSTATE_NONE; }
-bool PortManager::Add(const char *protocol, unsigned short port, unsigned short intport) { return false; }
+bool PortManager::Initialize(unsigned int timeout) { return false; }
+bool PortManager::Add(const char *protocol, unsigned short port, unsigned short intport, const std::string &desc) { return false; }
 bool PortManager::Remove(const char *protocol, unsigned short port) { return false; }
-void PortManager::Shutdown() {}
+void PortManager::Shutdown(double budgetSeconds) {}
 bool PortManager::RefreshPortList() { return false; }
 bool PortManager::Clear() { return false; }
 bool PortManager::Restore() { return false; }
 void PortManager::Terminate() {}
+bool PortManager::HaveControlURL() const { return false; }
+bool PortManager::OutOfTime() const { return true; }
 
-void __UPnPInit(const int timeout_ms) {}
+void __UPnPInit(unsigned int timeout_ms) {}
 void __UPnPShutdown() {}
 
 void UPnP_Add(const char *protocol, unsigned short port, unsigned short intport) {}
 void UPnP_Remove(const char *protocol, unsigned short port) {}
+void UPnP_Notify() {}

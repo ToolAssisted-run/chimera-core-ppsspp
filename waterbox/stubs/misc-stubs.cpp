@@ -35,10 +35,14 @@ bool TranslateShader(std::string *dst, ShaderLanguage destLang, const ShaderLang
 // --- websocket debugger ---
 void HandleDebuggerRequest(const http::ServerRequest &request) {}
 void StopAllDebuggers() {}
+void WebSocketDebuggerTick() {}
+bool WebSocketDebuggerHasClients() { return false; }
+void WebSocketNotifyBreakpointHit(const BreakpointHit &hit) {}
 
 // --- retro achievements ---
 namespace Achievements {
 bool HardcoreModeActive() { return false; }
+bool WarnUserIfHardcoreModeActive(bool isSaveStateAction, std::string_view message) { return false; }
 void ChangeUMD(const Path &path, FileLoader *fileLoader) {}
 void DoState(PointerWrap &p) {}
 }  // namespace Achievements

@@ -1,7 +1,8 @@
 diff --git a/Core/HW/Display.cpp b/Core/HW/Display.cpp
+index f21d442d33..3d7bb1cd9a 100644
 --- a/Core/HW/Display.cpp
 +++ b/Core/HW/Display.cpp
-@@ -237,9 +237,22 @@
+@@ -230,9 +230,22 @@ bool DisplayIsRunningSlow() {
  	return false;
  }
  
@@ -15,7 +16,7 @@ diff --git a/Core/HW/Display.cpp b/Core/HW/Display.cpp
 +#endif
 +
  void DisplayFireVblankStart() {
- 	frameStartTicks = CoreTiming::GetTicks();
+ 	frameStartTicks = CoreTiming::GetTicks(currentMIPS);
  	numVBlanks++;
 +#ifdef CHIMERA_WATERBOX
 +	if (chimera_vblank_start)

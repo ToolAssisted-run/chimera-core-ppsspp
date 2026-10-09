@@ -26,7 +26,9 @@ core_srcs() {
 		-e "^$pp/Core/RetroAchievements.cpp$" \
 		-e "^$pp/Core/Util/PortManager.cpp$" \
 		-e "^$pp/Core/MIPS/MIPSAsm.cpp$" \
-		-e "^$pp/Core/WebServer.cpp$"
+		-e "^$pp/Core/WebServer.cpp$" \
+		-e "^$pp/Core/EmuThread.cpp$" \
+		-e "^$pp/Core/CmdLine.cpp$"
 }
 
 # Common: the compute/emu-support subset. No UI, no VR, no GPU backend
@@ -65,7 +67,6 @@ ext_srcs() {
 	echo "$pp/ext/gason/gason.cpp"
 	echo "$pp/ext/jpge/jpgd.cpp"
 	echo "$pp/ext/jpge/jpge.cpp"
-	echo "$pp/ext/minimp3/minimp3.cpp"
 	ls "$pp"/ext/udis86/*.c
 	echo "$pp/ext/disarm.cpp"
 	echo "$pp/ext/riscv-disas.cpp"
