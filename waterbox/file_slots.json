@@ -1,5 +1,5 @@
 {
-  "_comment": "The core-declared file form for chimera's project wizard: categories, cardinality (max -1 = unbounded), accepted formats, tooltip help. Chimera renders and enforces; this file decides. Slot ids are what project manifests record.",
+  "_comment": "This file lists the kinds of file a project of this core can hold. Chimera's New Project window is built from it. Each kind is called a slot. A slot has a title, the number of files it takes (min and max, where a max of -1 means no limit), the file extensions it accepts and the help text shown to the user. Chimera shows the form and checks the chosen files against it. A project file records its files under the slot ids used here.",
   "slots": [
     {
       "id": "disc",
@@ -7,7 +7,7 @@
       "min": 1,
       "max": 1,
       "formats": ["iso", "cso", "pbp", "prx", "elf"],
-      "help": "The PSP game: a UMD dump as .iso or compressed .cso, or homebrew (EBOOT .pbp, a raw .prx or .elf)."
+      "help": "The PSP game. It can be a UMD dump (.iso, or compressed .cso) or homebrew (an EBOOT .pbp, or a plain .prx or .elf)."
     },
     {
       "id": "savedata",
@@ -15,7 +15,7 @@
       "min": 0,
       "max": 1,
       "formats": ["zip"],
-      "help": "What the memory stick holds already saved when the PSP starts: the zip that Emulator > Export Save Data... writes, put back as it is, or a zip of save folders taken off a memory stick (ULUS10041DATA00, with its PARAM.SFO, icons and the game's files), which go under PSP/SAVEDATA. It is unpacked onto the memory stick before the machine starts, mounted read-only and pinned by hash, and the movie cites it, so a run that starts from a saved game reproduces like one that starts from nothing. Leave it empty and the stick has no saves."
+      "help": "What is already saved on the memory stick when the PSP starts. It is either the zip that Emulator > Export Save Data... writes, used as it is, or a zip of save folders copied from a memory stick (for example ULUS10041DATA00, with its PARAM.SFO, icons and the game's files), which are put under PSP/SAVEDATA. The zip is unpacked onto the memory stick before the machine starts. The file is never changed. The project and the movie record exactly which file it was, so a run that starts from a saved game can be played back by anyone who has the same file. Leave this empty and the memory stick has no saves."
     },
     {
       "id": "dlc",
@@ -23,7 +23,7 @@
       "min": 0,
       "max": -1,
       "formats": ["zip"],
-      "help": "Downloadable content: a zip of the game's DLC folder as a memory stick holds it (ULUS10336, with the EDAT files and PARAM.PBP inside), which goes under PSP/GAME - or a zip of the memory stick itself, whose PSP/ tree goes where it says. Unpacked onto the memory stick before the machine starts and pinned by hash like the save data. Several zips may be given."
+      "help": "Downloadable content. It is either a zip of the game's DLC folder as it is on a memory stick (for example ULUS10336, with the EDAT files and PARAM.PBP inside), which is put under PSP/GAME, or a zip of a whole memory stick, whose PSP/ folders are put where they belong. It is unpacked onto the memory stick before the machine starts, and its hash is recorded like the save data's. Several zips can be given."
     }
   ]
 }
