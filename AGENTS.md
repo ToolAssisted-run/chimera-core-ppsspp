@@ -22,6 +22,8 @@ in `docs/BUILDING.md`.
 - `waterbox/build-ffmpeg.sh`, `build-muslmath.sh`, `build-assets.py` - FFmpeg
   per flavour, musl's math for the reference, the embedded assets.
 - `waterbox/build-package.sh` - builds the guest and writes the package.
+- `waterbox/vk-shim.cpp` - the guest end of Chimera's Vulkan bridge, for the
+  Renderer setting's `vulkan-hw` (PPSSPP's Vulkan renderer; the guest only).
 - `waterbox/psp-driver.cpp` - the driver, shared by both flavours.
   `waterbox/waterbox.cpp` - the guest ABI, guest only.
   `waterbox/run-native.cpp` - its native twin. `waterbox/run-wbx.c` - the host
@@ -41,6 +43,8 @@ in `docs/BUILDING.md`.
 ```sh
 sudo apt-get update
 sudo apt-get install -y --no-install-recommends meson ninja-build build-essential python3
+# for the Vulkan renderer's checks, a Vulkan driver (one that draws on the
+# processor will do; without one those checks say SKIP): libvulkan1 mesa-vulkan-drivers
 # the frontend gate also needs: cmake pkg-config mono-complete xvfb
 #   libgl1-mesa-dev libx11-dev libxext-dev libasound2-dev, and the .NET SDK 8.0
 
@@ -48,7 +52,7 @@ sudo apt-get install -y --no-install-recommends meson ninja-build build-essentia
 git submodule update --init --depth 1 extern/ppsspp
 git -C extern/ppsspp submodule update --init --depth 1 \
   ext/zstd ext/cpu_features ext/rapidjson ext/libchdr ext/lua \
-  ext/aemu_postoffice pspautotests ffmpeg
+  ext/aemu_postoffice ext/glslang ext/SPIRV-Cross pspautotests ffmpeg
 
 # Chimera and miniBox (~/chimera is the scripts' fallback)
 git clone https://github.com/ToolAssisted-run/chimera.git ~/chimera
@@ -121,10 +125,16 @@ the commit that the frontend gate was not run.
 - That script skips a patch that does not apply, silently. After changing a
   patch or moving the submodule, make sure the tree really carries the series.
 - Both flavours compile the same sources with the same defines. A source is
-  added or removed in `waterbox/sources.sh`, never in one flavour only.
+  added or removed in `waterbox/sources.sh`, never in one flavour only. The
+  one exception is the Vulkan renderer (`sources.sh vulkan`, the define
+  `CHIMERA_GUEST_VK`): the guest has it and the reference does not, because
+  it draws with a device only Chimera hands over.
 - Determinism is the product. The guest must not read host time, host
   randomness or anything else that differs between runs, and a savestate must
-  round-trip. The gate checks it; a change that breaks it is a bug.
+  round-trip. The gate checks it; a change that breaks it is a bug. The
+  Renderer setting's `vulkan-hw` is the declared exception, for the picture
+  only (`waterbox.config`): the host's GPU draws it. The machine under it
+  did not depend on the card where that was measured (`docs/PLAN.md`).
 - The native reference must compute what the guest computes: it links musl's
   math library and an FFmpeg built with the same options. Do not give one
   flavour something the other lacks.

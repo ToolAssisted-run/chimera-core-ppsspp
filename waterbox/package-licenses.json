@@ -19,6 +19,27 @@
       "commit": "{submodule:extern/ppsspp}",
       "file": "extern/ppsspp/LICENSE.TXT",
       "sourceUrl": "https://github.com/hrydgard/ppsspp/archive/{commit}.tar.gz"
+    },
+    {
+      "name": "glslang",
+      "license": "BSD-3-Clause, BSD-2-Clause, MIT and Apache-2.0, with its generated parser under GPL-3.0 with the Bison exception",
+      "url": "https://github.com/hrydgard/glslang",
+      "file": "extern/ppsspp/ext/glslang/LICENSE.txt",
+      "note": "PPSSPP's own fork, a submodule of it. The compiler that turns the GLSL PPSSPP writes for its Vulkan renderer into SPIR-V: the front end and the SPIR-V writer, without the optimiser and without HLSL. Used only when the Renderer setting is vulkan-hw."
+    },
+    {
+      "name": "SPIRV-Cross",
+      "license": "Apache-2.0 (offered under Apache-2.0 or MIT)",
+      "url": "https://github.com/KhronosGroup/SPIRV-Cross",
+      "file": "extern/ppsspp/ext/SPIRV-Cross/LICENSE",
+      "note": "A submodule of PPSSPP. Its shader translator reads a compiled shader back with it. Used only when the Renderer setting is vulkan-hw."
+    },
+    {
+      "name": "Vulkan Memory Allocator",
+      "license": "MIT",
+      "url": "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator",
+      "file": "extern/ppsspp/ext/vma/vk_mem_alloc.h",
+      "note": "One header and its implementation file, carried in PPSSPP's tree. Its licence is the comment at the top of the header."
     }
   ]
 }

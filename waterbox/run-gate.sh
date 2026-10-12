@@ -310,5 +310,136 @@ else
 	echo "SKIP savedata (no $sd - would prove the memory stick leaves through the savedata channel, identically in both flavors)"
 fi
 
+# ---- the real game, when there is one -------------------------------------
+# tests/run-game-gate.sh replays a committed movie over a commercial image
+# through both flavours, then again with a state round trip around every
+# frame. It is the only leg here that runs a real game rather than one of
+# pspautotests' programs, and it was called by NOTHING until 2026-09-20 -
+# dormant by default rather than by decision (the gate audit's mode A, see
+# chimera/docs/gates.md). The image is not distributable, so it SKIPs where
+# there is none - but it skips VISIBLY and by name, and a failure is this
+# gate's failure.
+gamegate="$root/tests/run-game-gate.sh"
+if [ -x "$gamegate" ]; then
+	gameout="$("$gamegate" 2>&1)"
+	echo "$gameout" | sed 's/^/  /'
+	case "$gameout" in
+		*"SKIP: no game image"*)
+			echo "SKIP game (drop the image named above into tests/roms/ and this leg runs)" ;;
+		*)
+			if echo "$gameout" | grep -q '^PASS:'; then
+				echo "PASS game (a commercial image, native==sandbox, and a state round trip around every frame)"
+			else
+				echo "FAIL game"
+				fail=1
+			fi ;;
+	esac
+else
+	echo "SKIP game (no tests/run-game-gate.sh)"
+fi
+
+# ---- the Vulkan renderer (chimera issue 248) -------------------------------
+# The Renderer setting's "vulkan-hw": PPSSPP's Vulkan renderer, through
+# miniBox's Vulkan bridge. run-wbx hands the bridge over when CHIMERA_GPU asks,
+# as the frontend does. It needs a Vulkan driver on this computer - one that
+# draws on the processor will do (Mesa's lavapipe) - and says SKIP without.
+# The reference flavour has no Vulkan renderer, so nothing here is compared
+# with it: the software renderer in the sandbox is what the machine is held
+# to, and its picture is what the Vulkan one is compared with.
+#
+# What these do NOT stand in for: a test program is not a game and lavapipe
+# is not a graphics card. What a game drew on a GTX 1060 is in docs/PLAN.md.
+vkat="$here/../extern/ppsspp/pspautotests/tests"
+vktri="$vkat/gpu/triangle/triangle.prx"
+vkother="$vkat/gpu/displaylist/state.prx"
+vkwork="$(mktemp -d)"
+printf '{"renderer":"vulkan-hw"}' > "$vkwork/vk.json"
+printf '{"renderer":"software"}' > "$vkwork/sw.json"
+vkrun() { # <name> <settings> <program> <frames> <run-wbx options...>
+	vkname="$1"; vkset="$2"; vkprog="$3"; vkframes="$4"; shift 4
+	CHIMERA_GPU=1 timeout 900 "$natdir/run-wbx" "$gstdir/core.wbx" "$vkprog" "$vkframes" --settings "$vkwork/$vkset.json" "$@" \
+		> "$vkwork/$vkname.out" 2> "$vkwork/$vkname.err"
+}
+vkall() { grep -E '^(videoHash|tailVideoHash|audioHash|domain\[)' "$1"; }
+vkmachine() { grep -E '^(audioHash|domain\[RAM\]|domain\[Scratchpad\])' "$1"; }
+if [ ! -f "$vktri" ] || [ ! -f "$vkother" ]; then
+	echo "FAIL vk (missing: $vktri or $vkother - the pinned test set has moved)"; fail=1
+else
+	vkrun v60 vk "$vktri" 60 --screenshot "$vkwork/vk.tga"
+	vk_card="$(grep -o 'vulkan bridge: .*(Vulkan [^)]*)' "$vkwork/v60.err" | head -1 | cut -c16-)"
+	if grep -q 'no Vulkan was handed over' "$vkwork/v60.err"; then
+		echo "SKIP vk (this computer handed the core no Vulkan: $(grep -m1 '^vulkan bridge:' "$vkwork/v60.err" | cut -c1-100) - would prove PPSSPP's Vulkan renderer draws, and comes through a state load)"
+	else
+		vkrun s60 sw "$vktri" 60 --screenshot "$vkwork/sw.tga"
+		# the renderer is not the machine: memory and sound are the software renderer's
+		# (VRAM is not compared: the software renderer draws into it, the card does not)
+		if [ -n "$vk_card" ] && ! grep -q 'calls were refused' "$vkwork/v60.err" &&
+			[ -n "$(vkmachine "$vkwork/v60.out")" ] && [ "$(vkmachine "$vkwork/v60.out")" = "$(vkmachine "$vkwork/s60.out")" ]; then
+			echo "PASS vk:bridge (60 frames of triangle.prx on a Vulkan device, $vk_card; no command refused; memory and sound are the software renderer's)"
+		else
+			echo "FAIL vk:bridge (device [${vk_card:-none made}] $(grep -m1 'calls were refused' "$vkwork/v60.err") $(grep -v '^\s*$' "$vkwork/v60.err" | tail -1 | cut -c1-100))"; fail=1
+		fi
+
+		# The picture, against the software renderer's: the same but for the
+		# pixels along the triangle's edges, which two rasterisers do not round
+		# alike. Another program's picture is told apart from it.
+		vkrun o60 vk "$vkother" 60 --screenshot "$vkwork/other.tga"
+		same="$(python3 "$here/tests/check-same-picture.py" "$vkwork/sw.tga" "$vkwork/vk.tga" 2>&1)"; same_rc=$?
+		other="$(python3 "$here/tests/check-same-picture.py" "$vkwork/sw.tga" "$vkwork/other.tga" 2>&1)"; other_rc=$?
+		if [ "$same_rc" = 0 ] && [ "$other_rc" = 1 ]; then
+			echo "PASS vk:picture (Vulkan draws what the software renderer draws: ${same%% (*}; another program's picture is told apart: ${other%% (*})"
+		else
+			echo "FAIL vk:picture (against the software renderer: $(printf '%s\n' "$same" | head -1); another program, which must differ: $(printf '%s\n' "$other" | head -1))"; fail=1
+		fi
+
+		# A state saved and loaded around every frame. Every load is a new
+		# Vulkan device: the renderer loses its device the way PPSSPP already
+		# knows how to, gets another, and is given back what its framebuffers
+		# held from the copy the state carried. The control leaves the core
+		# untold before each state (no copy), and the picture is then lost.
+		vkrun rr vk "$vktri" 60 --rerecord
+		CHIMERA_NO_STATE_SAVING=1 vkrun untold vk "$vktri" 60 --rerecord
+		if [ -z "$(vkall "$vkwork/v60.out")" ] || [ "$(vkall "$vkwork/v60.out")" != "$(vkall "$vkwork/rr.out")" ]; then
+			echo "FAIL vk:rerecord (a state saved and loaded around every frame is not the straight run: $(grep -m1 'the guest died\|calls were refused' "$vkwork/rr.err"))"; fail=1
+		elif grep -q 'calls were refused' "$vkwork/rr.err"; then
+			echo "FAIL vk:rerecord (the frames are the straight run's, but $(grep -m1 'calls were refused' "$vkwork/rr.err"))"; fail=1
+		elif [ "$(vkall "$vkwork/v60.out")" = "$(vkall "$vkwork/untold.out")" ]; then
+			echo "FAIL vk:rerecord (the control came out right with the core left untold: this program does not show the loss, or the runner told the core anyway)"; fail=1
+		else
+			echo "PASS vk:rerecord (60 frames with a state saved and loaded around every one are the straight run - memory, picture, sound - and no command was refused; with the core left untold the picture is not)"
+		fi
+
+		# The same over a game, when there is one (tests/roms), with the movie
+		# that is committed for it (tests/run-game-gate.sh uses the same pair).
+		# This is the check that a test program cannot be: a game's frames are
+		# not all alike. The renderer's vertex buffers are flushed to the card
+		# before it draws (patches: no memory is coherent through the bridge),
+		# and a buffer started again for a new frame once kept its count of
+		# what had been flushed - a frame that wrote more than the one before
+		# had only its tail flushed, and the card drew the head with the last
+		# frame's vertices. A load makes every buffer anew, so the frames after
+		# a load were right and the straight run was the wrong one: this pair
+		# differed, in the picture alone.
+		vkgame="$(ls "$root"/tests/roms/*.iso 2>/dev/null | head -1)"
+		vkmovie="$root/tests/betabloc.sol"
+		if [ -z "$vkgame" ] || [ ! -f "$vkmovie" ]; then
+			echo "SKIP vk:game (no image in tests/roms - would prove a game's frames are drawn right and come through a state load under Vulkan)"
+		else
+			vkframes="$(grep -c '^||' "$vkmovie")"
+			vkrun g vk "$vkgame" "$vkframes" --movie "$vkmovie"
+			vkrun gs sw "$vkgame" "$vkframes" --movie "$vkmovie"
+			vkrun grr vk "$vkgame" "$vkframes" --movie "$vkmovie" --rerecord
+			if [ -z "$(vkall "$vkwork/g.out")" ] || [ "$(vkmachine "$vkwork/g.out")" != "$(vkmachine "$vkwork/gs.out")" ]; then
+				echo "FAIL vk:game ($vkframes frames of $(basename "$vkgame"): the machine is not the software renderer's)"; fail=1
+			elif [ "$(vkall "$vkwork/g.out")" != "$(vkall "$vkwork/grr.out")" ] || grep -q 'calls were refused' "$vkwork/grr.err"; then
+				echo "FAIL vk:game ($vkframes frames of $(basename "$vkgame") with a state around every frame are not the straight run $(grep -m1 'calls were refused' "$vkwork/grr.err"))"; fail=1
+			else
+				echo "PASS vk:game ($vkframes frames of $(basename "$vkgame") played by its movie: the machine is the software renderer's, and a state saved and loaded around every frame changes nothing, picture included)"
+			fi
+		fi
+	fi
+fi
+rm -rf "$vkwork"
+
 rm -f "$irset"
 exit $fail

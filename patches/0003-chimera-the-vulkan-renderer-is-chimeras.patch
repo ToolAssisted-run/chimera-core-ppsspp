@@ -1,0 +1,506 @@
+diff --git a/Common/GPU/Shader.cpp b/Common/GPU/Shader.cpp
+--- a/Common/GPU/Shader.cpp
++++ b/Common/GPU/Shader.cpp
+@@ -6,7 +6,7 @@
+ #undef new
+ #endif
+ 
+-#ifndef SOFTGPU_ONLY
++#if !defined(SOFTGPU_ONLY) || defined(CHIMERA_GUEST_VK)
+ #include "ext/glslang/SPIRV/GlslangToSpv.h"
+ #endif
+ 
+@@ -118,7 +118,7 @@
+ 	}
+ }
+ 
+-#ifndef SOFTGPU_ONLY
++#if !defined(SOFTGPU_ONLY) || defined(CHIMERA_GUEST_VK)
+ void InitShaderResources(TBuiltInResource &Resources) {
+ 	Resources.maxLights = 32;
+ 	Resources.maxClipPlanes = 6;
+diff --git a/Common/GPU/Vulkan/VulkanContext.cpp b/Common/GPU/Vulkan/VulkanContext.cpp
+--- a/Common/GPU/Vulkan/VulkanContext.cpp
++++ b/Common/GPU/Vulkan/VulkanContext.cpp
+@@ -143,15 +143,22 @@
+ 	GetInstanceLayerProperties();
+ 	GetInstanceLayerExtensionList(nullptr, &instance_extension_properties_);
+ 
++#ifndef CHIMERA_GUEST_VK
+ 	if (!IsInstanceExtensionAvailable(VK_KHR_SURFACE_EXTENSION_NAME)) {
+ 		// Cannot create a Vulkan display without VK_KHR_SURFACE_EXTENSION.
+ 		// Technically we could allow this for headless builds, but meh.
+ 		init_error_ = "Vulkan not loaded - no surface extension";
+ 		return VK_ERROR_INITIALIZATION_FAILED;
+ 	}
++#endif
+ 	createInfo_ = info;
+ 
+ 	// List extensions to try to enable.
++#ifndef CHIMERA_GUEST_VK
++	// (chimera: no surface, and no extension for one. Chimera hands the core a
++	// Vulkan device and nothing to show a picture on: the renderer draws into
++	// images of its own - VulkanGraphicsContext's offscreen mode - and the core
++	// reads the frame back.)
+ 	instance_extensions_enabled_.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+ #ifdef _WIN32
+ 	instance_extensions_enabled_.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+@@ -182,6 +189,7 @@
+ 	}
+ #endif
+ #endif
++#endif  // !CHIMERA_GUEST_VK
+ 
+ 	if ((createInfo_.flags & VulkanInitFlags::VALIDATE) && info.customDriver.empty()) {
+ 		if (IsInstanceExtensionAvailable(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+@@ -698,7 +706,10 @@
+ 
+ 	GetDeviceExtensionList(&device_extension_properties_);
+ 
++#ifndef CHIMERA_GUEST_VK
++	// (chimera: no swapchain either - see CreateInstance)
+ 	device_extensions_enabled_.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
++#endif
+ 
+ 	// A host application (e.g. a libretro frontend) may require extra device extensions on top of what we'd
+ 	// normally ask for.
+@@ -923,6 +934,12 @@
+ 	VulkanSetAvailable(true);
+ 
+ 	VmaAllocatorCreateInfo allocatorInfo = {};
++#ifdef CHIMERA_GUEST_VK
++	// chimera: a block that holds one mapped buffer is mapped whole, and through
++	// Chimera's Vulkan bridge a mapped byte is a byte of the core's own memory -
++	// in every savestate, and copied when the mapping is made.
++	allocatorInfo.preferredLargeHeapBlockSize = 16 * 1024 * 1024;
++#endif
+ 	allocatorInfo.vulkanApiVersion = std::min(vulkanDeviceApiVersion_, vulkanInstanceApiVersion_);
+ 	allocatorInfo.physicalDevice = physical_devices_[physical_device_];
+ 	allocatorInfo.device = device_;
+diff --git a/Common/GPU/Vulkan/VulkanFrameData.cpp b/Common/GPU/Vulkan/VulkanFrameData.cpp
+--- a/Common/GPU/Vulkan/VulkanFrameData.cpp
++++ b/Common/GPU/Vulkan/VulkanFrameData.cpp
+@@ -1,3 +1,4 @@
++#include "Common/GPU/Vulkan/VulkanMemory.h"
+ #include <mutex>
+ 
+ #include "VulkanFrameData.h"
+@@ -246,6 +247,9 @@
+ 		VLOG("Doing queue submit, fencing frame %d", this->index);
+ 		// The fence is waited on by the main thread, they are not allowed to access it simultaneously.
+ 		vulkan->LockQueue();
++#ifdef CHIMERA_GUEST_VK
++		ChimeraFlushPushPools();  // what the commands read has to be on the card first
++#endif
+ 		res = vkQueueSubmit(vulkan->GetGraphicsQueue(), 1, &submit_info, fenceToTrigger);
+ 		vulkan->UnlockQueue();
+ 		if (sharedData.useMultiThreading) {
+@@ -256,6 +260,9 @@
+ 	} else {
+ 		VLOG("Doing queue submit, fencing something (%p)", fenceToTrigger);
+ 		vulkan->LockQueue();
++#ifdef CHIMERA_GUEST_VK
++		ChimeraFlushPushPools();  // what the commands read has to be on the card first
++#endif
+ 		res = vkQueueSubmit(vulkan->GetGraphicsQueue(), 1, &submit_info, fenceToTrigger);
+ 		vulkan->UnlockQueue();
+ 	}
+diff --git a/Common/GPU/Vulkan/VulkanGraphicsContext.cpp b/Common/GPU/Vulkan/VulkanGraphicsContext.cpp
+--- a/Common/GPU/Vulkan/VulkanGraphicsContext.cpp
++++ b/Common/GPU/Vulkan/VulkanGraphicsContext.cpp
+@@ -170,8 +170,11 @@
+ 
+ 	init_glslang();
+ 
++#ifndef CHIMERA_GUEST_VK
++	// (chimera: a sandboxed core reports an error and goes on; it has no debugger to break into)
+ 	g_LogOptions.breakOnError = true;
+ 	g_LogOptions.breakOnWarning = true;
++#endif
+ 	g_LogOptions.msgBoxOnError = false;
+ 
+ 	std::string errorStr;
+diff --git a/Common/GPU/Vulkan/VulkanLoader.cpp b/Common/GPU/Vulkan/VulkanLoader.cpp
+--- a/Common/GPU/Vulkan/VulkanLoader.cpp
++++ b/Common/GPU/Vulkan/VulkanLoader.cpp
+@@ -664,8 +664,35 @@
+ #endif
+ }
+ 
++#ifdef CHIMERA_GUEST_VK
++// chimera: no library is opened in a sandbox. Every Vulkan command is a wrapper
++// linked into the core (miniBox source/vk) that hands the call to the frontend,
++// and each is asked for by name. The two "proc addr" functions are these, so
++// that the instance and device loaders below work as they are; a name the
++// frontend's list does not carry comes back null, as a missing symbol would.
++extern "C" void *chimera_vk_lookup(const char *name);
++static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL ChimeraInstanceProcAddr(VkInstance, const char *name) {
++	return (PFN_vkVoidFunction)chimera_vk_lookup(name);
++}
++static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL ChimeraDeviceProcAddr(VkDevice, const char *name) {
++	return (PFN_vkVoidFunction)chimera_vk_lookup(name);
++}
++#endif
++
+ bool VulkanLoad(std::string *errorStr) {
+-#if PPSSPP_PLATFORM(IOS_APP_STORE)
++#ifdef CHIMERA_GUEST_VK
++	vkCreateInstance = (PFN_vkCreateInstance)chimera_vk_lookup("vkCreateInstance");
++	vkGetInstanceProcAddr = ChimeraInstanceProcAddr;
++	vkGetDeviceProcAddr = ChimeraDeviceProcAddr;
++	vkEnumerateInstanceVersion = (PFN_vkEnumerateInstanceVersion)chimera_vk_lookup("vkEnumerateInstanceVersion");
++	vkEnumerateInstanceExtensionProperties = (PFN_vkEnumerateInstanceExtensionProperties)chimera_vk_lookup("vkEnumerateInstanceExtensionProperties");
++	vkEnumerateInstanceLayerProperties = (PFN_vkEnumerateInstanceLayerProperties)chimera_vk_lookup("vkEnumerateInstanceLayerProperties");
++	if (!vkCreateInstance || !vkEnumerateInstanceExtensionProperties || !vkEnumerateInstanceLayerProperties) {
++		*errorStr = "Chimera's Vulkan bridge is not there";
++		return false;
++	}
++	return true;
++#elif PPSSPP_PLATFORM(IOS_APP_STORE)
+ 	INFO_LOG(Log::G3D, "iOS: Vulkan doesn't need loading");
+ 	return true;
+ #else
+@@ -946,6 +973,9 @@
+ }
+ 
+ void VulkanFree() {
++#ifdef CHIMERA_GUEST_VK
++	return;
++#endif
+ #if !PPSSPP_PLATFORM(IOS_APP_STORE)
+ 	VulkanFreeLibrary(vulkanLibrary);
+ #endif
+diff --git a/Common/GPU/Vulkan/VulkanMemory.cpp b/Common/GPU/Vulkan/VulkanMemory.cpp
+--- a/Common/GPU/Vulkan/VulkanMemory.cpp
++++ b/Common/GPU/Vulkan/VulkanMemory.cpp
+@@ -31,9 +31,34 @@
+ // Always keep around push buffers at least this long (seconds).
+ static const double PUSH_GARBAGE_COLLECTION_DELAY = 10.0;
+ 
++// chimera: the push pools there are, for ChimeraFlushPushPools
++static std::vector<VulkanPushPool *> g_chimeraPushPools;
++
++void ChimeraFlushPushPools() {
++	for (VulkanPushPool *pool : g_chimeraPushPools)
++		pool->ChimeraFlush();
++}
++
++void VulkanPushPool::ChimeraFlush() {
++	for (auto &block : blocks_) {
++		// A block that is started again (BeginFrame, NextBlock) starts unflushed.
++		// It is not enough to notice that it holds less than was flushed: a
++		// frame that writes MORE than the one before would then have only its
++		// tail flushed, and the card would draw the head with the last frame's
++		// vertices (Crash Tag Team Racing's title screen did).
++		if (block.used < block.chimeraFlushed)
++			block.chimeraFlushed = 0;
++		if (block.used > block.chimeraFlushed) {
++			vmaFlushAllocation(vulkan_->Allocator(), block.allocation, block.chimeraFlushed, block.used - block.chimeraFlushed);
++			block.chimeraFlushed = block.used;
++		}
++	}
++}
++
+ VulkanPushPool::VulkanPushPool(VulkanContext *vulkan, const char *name, size_t originalBlockSize, size_t slack, VkBufferUsageFlags usage)
+ 	: vulkan_(vulkan), name_(name), originalBlockSize_(originalBlockSize), usage_(usage), slack_(slack) {
+ 	RegisterGPUMemoryManager(this);
++	g_chimeraPushPools.push_back(this);
+ 
+ 	for (int i = 0; i < VulkanContext::MAX_INFLIGHT_FRAMES; i++) {
+ 		blocks_.push_back(CreateBlock(originalBlockSize));
+@@ -43,6 +68,7 @@
+ }
+ 
+ VulkanPushPool::~VulkanPushPool() {
++	g_chimeraPushPools.erase(std::remove(g_chimeraPushPools.begin(), g_chimeraPushPools.end(), this), g_chimeraPushPools.end());
+ 	UnregisterGPUMemoryManager(this);
+ 	_dbg_assert_(blocks_.empty());
+ }
+@@ -66,7 +92,15 @@
+ 	VmaAllocationCreateInfo allocCreateInfo{};
+ 
+ 	allocCreateInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
++#ifdef CHIMERA_GUEST_VK
++	// chimera: through Chimera's Vulkan bridge no memory type is coherent, and
++	// a mapping is a copy in the core's memory. So the pool flushes what it
++	// was given (ChimeraFlush) before commands are submitted, and asks for
++	// cached memory, which is quick to copy out of on the host.
++	allocCreateInfo.preferredFlags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
++#else
+ 	allocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;  // required to not get memory where we have to manually flush.
++#endif
+ 	VmaAllocationInfo allocInfo{};
+ 	
+ 	VkResult result = vmaCreateBuffer(vulkan_->Allocator(), &b, &allocCreateInfo, &block.buffer, &block.allocation, &allocInfo);
+@@ -99,6 +133,7 @@
+ 				block.lastUsed = now;
+ 			}
+ 			block.used = 0;
++			block.chimeraFlushed = 0;  // chimera: what is written from here on is new to the card
+ 			if (!block.original) {
+ 				// Return block to the common pool
+ 				block.frameIndex = -1;
+@@ -137,6 +172,7 @@
+ 		if ((block.frameIndex == curFrameIndex || block.frameIndex == -1) && block.size >= allocationSize) {
+ 			_assert_(block.used == 0);
+ 			block.used = allocationSize;
++			block.chimeraFlushed = 0;
+ 			block.lastUsed = time_now_d();
+ 			block.frameIndex = curFrameIndex;
+ 			_assert_(block.writePtr != nullptr);
+@@ -197,7 +233,10 @@
+ 	VmaAllocationCreateInfo allocCreateInfo{};
+ 
+ 	allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
++#ifndef CHIMERA_GUEST_VK
++	// (chimera: no memory type is coherent through the bridge, and this buffer is never mapped)
+ 	allocCreateInfo.requiredFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;  // required to not get memory where we have to manually flush.
++#endif
+ 	VmaAllocationInfo allocInfo{};
+ 
+ 	VkResult result = vmaCreateBuffer(vulkan->Allocator(), &b, &allocCreateInfo, &buffer_, &allocation_, &allocInfo);
+diff --git a/Common/GPU/Vulkan/VulkanMemory.h b/Common/GPU/Vulkan/VulkanMemory.h
+--- a/Common/GPU/Vulkan/VulkanMemory.h
++++ b/Common/GPU/Vulkan/VulkanMemory.h
+@@ -77,6 +77,8 @@
+ 
+ 		VkDeviceSize size;
+ 		VkDeviceSize used;
++		// chimera: how much of `used` the card has been told of (ChimeraFlush)
++		VkDeviceSize chimeraFlushed;
+ 
+ 		int frameIndex;  // -1 means that it's "common", it can be grabbed by any frame as needed.
+ 		bool original;  // these blocks aren't garbage collected.
+@@ -89,6 +91,14 @@
+ 
+ 	Block CreateBlock(size_t sz);
+ 
++public:
++	// chimera: through Chimera's Vulkan bridge no memory is coherent - what
++	// is written into a block reaches the card when it is flushed. Called for
++	// every pool before commands are submitted (ChimeraFlushPushPools).
++	void ChimeraFlush();
++
++private:
++
+ 	VulkanContext *vulkan_;
+ 	VkDeviceSize originalBlockSize_;
+ 	std::vector<Block> blocks_;
+@@ -114,3 +124,7 @@
+ 	VmaAllocation allocation_ = VK_NULL_HANDLE;
+ 	VkDeviceSize size_ = 0;  // convenience
+ };
++
++// chimera: flushes what every live push pool has been given since the last
++// time; called before each submit of commands (VulkanFrameData.cpp).
++void ChimeraFlushPushPools();
+diff --git a/GPU/Common/FramebufferManagerCommon.cpp b/GPU/Common/FramebufferManagerCommon.cpp
+--- a/GPU/Common/FramebufferManagerCommon.cpp
++++ b/GPU/Common/FramebufferManagerCommon.cpp
+@@ -3573,8 +3573,143 @@
+ 	DoRelease(draw2DPipeline565ToDepthDeswizzle_);
+ }
+ 
++// chimera: see FramebufferManagerCommon.h
++namespace {
++constexpr u64 CHIMERA_FB_MAGIC = 0x3142465053504843ull;
++constexpr u32 CHIMERA_FB_MAX = 256;
++struct ChimeraFbHeader {
++	u64 magic;
++	u32 count;
++	u32 unused;
++	u64 end;  // bytes of pixels in use
++};
++struct ChimeraFbRecord {
++	u64 owner;  // the VirtualFramebuffer
++	u64 offset;
++	u64 bytes;
++	u32 width;
++	u32 height;
++};
++constexpr size_t CHIMERA_FB_TABLE = sizeof(ChimeraFbHeader) + CHIMERA_FB_MAX * sizeof(ChimeraFbRecord);
++}  // namespace
++
++void FramebufferManagerCommon::ChimeraSaveFramebufs(u8 *block, size_t blockBytes, u8 *scratch, size_t scratchBytes) {
++	if (!block || !scratch || !draw_ || blockBytes <= CHIMERA_FB_TABLE || !useBufferedRendering_)
++		return;
++	ChimeraFbRecord fresh[CHIMERA_FB_MAX];
++	u32 count = 0;
++	u64 end = 0;
++	u8 *const pixels = block + CHIMERA_FB_TABLE;
++	const size_t room = blockBytes - CHIMERA_FB_TABLE;
++	for (VirtualFramebuffer *vfb : vfbs_) {
++		if (!vfb->fbo || count == CHIMERA_FB_MAX)
++			continue;
++		const u32 w = vfb->renderWidth, h = vfb->renderHeight;
++		const u64 bytes = (u64)w * h * 4;
++		if (bytes == 0 || bytes > scratchBytes || end + bytes > room)
++			continue;
++		// through the scratch block, and written only where it differs: a
++		// framebuffer nothing drew into costs the next state nothing
++		if (!draw_->CopyFramebufferToMemory(vfb->fbo, Draw::Aspect::COLOR_BIT, 0, 0, w, h, Draw::DataFormat::R8G8B8A8_UNORM, scratch, w, Draw::ReadbackMode::BLOCK, "chimera: before a state"))
++			continue;
++		if (memcmp(pixels + end, scratch, (size_t)bytes) != 0)
++			memcpy(pixels + end, scratch, (size_t)bytes);
++		ChimeraFbRecord rec{};
++		rec.owner = (u64)(uintptr_t)vfb;
++		rec.offset = end;
++		rec.bytes = bytes;
++		rec.width = w;
++		rec.height = h;
++		fresh[count++] = rec;
++		end += bytes;
++	}
++	// reading a framebuffer back ended whatever pass was open
++	if (currentRenderVfb_ && currentRenderVfb_->fbo)
++		draw_->BindFramebufferAsRenderTarget(currentRenderVfb_->fbo, { Draw::RPAction::KEEP, Draw::RPAction::KEEP, Draw::RPAction::KEEP }, "chimera: after the copy");
++	gstate_c.Dirty(DIRTY_ALL_RENDER_STATE);
++
++	ChimeraFbHeader header{};
++	header.magic = CHIMERA_FB_MAGIC;
++	header.count = count;
++	header.end = end;
++	if (memcmp(block, &header, sizeof(header)) != 0)
++		memcpy(block, &header, sizeof(header));
++	if (count != 0 && memcmp(block + sizeof(header), fresh, count * sizeof(ChimeraFbRecord)) != 0)
++		memcpy(block + sizeof(header), fresh, count * sizeof(ChimeraFbRecord));
++}
++
++void FramebufferManagerCommon::ChimeraRestoreFramebufs(const u8 *block, size_t blockBytes, bool usable) {
++	if (!draw_ || !useBufferedRendering_)
++		return;
++	const ChimeraFbHeader *header = (const ChimeraFbHeader *)block;
++	const ChimeraFbRecord *records = block ? (const ChimeraFbRecord *)(block + sizeof(ChimeraFbHeader)) : nullptr;
++	if (!block || blockBytes <= CHIMERA_FB_TABLE || header->magic != CHIMERA_FB_MAGIC || header->count > CHIMERA_FB_MAX)
++		usable = false;
++	const u8 *const pixels = block ? block + CHIMERA_FB_TABLE : nullptr;
++	const size_t room = blockBytes > CHIMERA_FB_TABLE ? blockBytes - CHIMERA_FB_TABLE : 0;
++
++	textureCache_->ForgetLastTexture();
++	for (VirtualFramebuffer *vfb : vfbs_) {
++		if (vfb->fbo || vfb->renderWidth == 0 || vfb->renderHeight == 0)
++			continue;
++		char tag[128];
++		FormatFramebufferName(vfb, tag, sizeof(tag));
++		vfb->fbo = draw_->CreateFramebuffer({ vfb->renderWidth, vfb->renderHeight, 1, GetFramebufferLayers(), msaaLevel_, true, tag });
++		if (!vfb->fbo)
++			continue;
++		draw_->BindFramebufferAsRenderTarget(vfb->fbo, { Draw::RPAction::CLEAR, Draw::RPAction::CLEAR, Draw::RPAction::CLEAR }, "chimera: after a load");
++		const ChimeraFbRecord *rec = nullptr;
++		for (u32 i = 0; usable && i < header->count; i++) {
++			if (records[i].owner == (u64)(uintptr_t)vfb) {
++				rec = &records[i];
++				break;
++			}
++		}
++		if (!rec || rec->width != vfb->renderWidth || rec->height != vfb->renderHeight ||
++			rec->bytes != (u64)rec->width * rec->height * 4 || rec->offset + rec->bytes > room)
++			continue;
++		// the carried pixels, as a texture of the framebuffer's own size, drawn over it one for one
++		Draw::Texture *tex = MakePixelTexture(pixels + rec->offset, GE_FORMAT_8888, rec->width, rec->width, rec->height);
++		if (!tex)
++			continue;
++		SetViewport2D(0, 0, vfb->renderWidth, vfb->renderHeight);
++		draw_->SetScissorRect(0, 0, vfb->renderWidth, vfb->renderHeight);
++		draw_->BindTextures(0, 1, &tex, Draw::TextureBindFlags::VULKAN_BIND_ARRAY);
++		DrawActiveTexture(0, 0, vfb->bufferWidth, vfb->bufferHeight, vfb->bufferWidth, vfb->bufferHeight,
++			0.0f, 0.0f, 1.0f, 1.0f, ROTATION_LOCKED_HORIZONTAL, DRAWTEX_NEAREST);
++		draw_->Invalidate(InvalidationFlags::CACHED_RENDER_STATE);
++	}
++	if (currentRenderVfb_ && currentRenderVfb_->fbo)
++		draw_->BindFramebufferAsRenderTarget(currentRenderVfb_->fbo, { Draw::RPAction::KEEP, Draw::RPAction::KEEP, Draw::RPAction::KEEP }, "chimera: after a load");
++	gstate_c.Dirty(DIRTY_ALL);
++}
++
+ void FramebufferManagerCommon::DeviceLost() {
+-	DestroyAllFBOs();
++	if (chimeraKeepFramebufs_) {
++		// chimera: the framebuffers stay, without what they had on the card
++		chimeraKeepFramebufs_ = false;
++		DiscardFramebufferCopy();
++		for (VirtualFramebuffer *vfb : vfbs_) {
++			if (vfb->fbo) {
++				vfb->fbo->Release();
++				vfb->fbo = nullptr;
++			}
++		}
++		for (VirtualFramebuffer *vfb : bvfbs_)
++			DestroyFramebuf(vfb);
++		bvfbs_.clear();
++		for (auto &tempFB : tempFBOs_)
++			tempFB.second.fbo->Release();
++		tempFBOs_.clear();
++		for (auto &iter : fbosToDelete_)
++			iter->Release();
++		fbosToDelete_.clear();
++		for (auto &iter : drawPixelsCache_)
++			iter.tex->Release();
++		drawPixelsCache_.clear();
++	} else {
++		DestroyAllFBOs();
++	}
+ 
+ 	presentation_->DeviceLost();
+ 	draw2D_.DeviceLost();
+diff --git a/GPU/Common/FramebufferManagerCommon.h b/GPU/Common/FramebufferManagerCommon.h
+--- a/GPU/Common/FramebufferManagerCommon.h
++++ b/GPU/Common/FramebufferManagerCommon.h
+@@ -340,6 +340,21 @@
+ 	void SetDepthFrameBuffer(bool isClearingDepth);
+ 
+ 	void RebindFramebuffer(const char *tag);
++
++	// chimera: WHAT A FRAMEBUFFER HOLDS IS ON THE CARD AND NOWHERE ELSE.
++	// A savestate loaded into Chimera leaves the renderer on a new device
++	// (waterbox/psp-driver.cpp, RebuildVulkan), and DeviceLost throws every
++	// framebuffer away - which a game that has stopped drawing never makes
++	// again, and which a frame in progress was being drawn into. So: before a
++	// state is taken the colour of every framebuffer is copied into a block of
++	// the core's own memory (ChimeraSaveFramebufs); a device lost because of a
++	// load keeps the framebuffers themselves and lets go only of what they
++	// had on the card (ChimeraKeepFramebufs, then DeviceLost); and after
++	// DeviceRestore each gets a new image, with the copy drawn into it when
++	// the state carried one (ChimeraRestoreFramebufs). Depth is not carried.
++	void ChimeraSaveFramebufs(u8 *block, size_t blockBytes, u8 *scratch, size_t scratchBytes);
++	void ChimeraKeepFramebufs() { chimeraKeepFramebufs_ = true; }
++	void ChimeraRestoreFramebufs(const u8 *block, size_t blockBytes, bool usable);
+ 	std::vector<const VirtualFramebuffer *> GetFramebufferList() const;
+ 
+ 	void PrepareCopyDisplayToOutput(const DisplayLayoutConfig &config, bool reallyDirty);
+@@ -626,6 +641,7 @@
+ 	bool postShaderIsSupersampling_ = false;
+ 
+ 	std::vector<VirtualFramebuffer *> vfbs_;
++	bool chimeraKeepFramebufs_ = false;
+ 	std::vector<VirtualFramebuffer *> bvfbs_; // blitting framebuffers (for download)
+ 
+ 	std::vector<DrawPixelsEntry> drawPixelsCache_;
+diff --git a/GPU/GPU.cpp b/GPU/GPU.cpp
+--- a/GPU/GPU.cpp
++++ b/GPU/GPU.cpp
+@@ -33,6 +33,10 @@
+ #include "GPU/Vulkan/GPU_Vulkan.h"
+ #endif
+ #include "GPU/Software/SoftGpu.h"
++#if defined(SOFTGPU_ONLY) && defined(CHIMERA_GUEST_VK)
++// chimera: the one hardware renderer this build has (chimera issue 248)
++#include "GPU/Vulkan/GPU_Vulkan.h"
++#endif
+ 
+ #if PPSSPP_API(D3D11) && !defined(SOFTGPU_ONLY)
+ #include "GPU/D3D11/GPU_D3D11.h"
+@@ -49,6 +53,14 @@
+ 	switch (gpuCore) {
+ 	case GPUCORE_SOFTWARE:
+ 		return new SoftGPU(ctx, draw);
++#if defined(SOFTGPU_ONLY) && defined(CHIMERA_GUEST_VK)
++	case GPUCORE_VULKAN:
++		if (!ctx) {
++			ERROR_LOG(Log::G3D, "Unable to init Vulkan GPU backend, no context");
++			return nullptr;
++		}
++		return new GPU_Vulkan(ctx, draw);
++#endif
+ #ifndef SOFTGPU_ONLY
+ 	case GPUCORE_GLES:
+ 		// Disable GLES on ARM Windows (but leave it enabled on other ARM platforms).

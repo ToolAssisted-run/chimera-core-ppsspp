@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <emulibc.h>
+#include <sys/mman.h>
 #include <waterbox_settings.h>
 #include <waterbox_slots.h>
 
@@ -112,7 +113,7 @@ ECL_EXPORT int Init(void)
 			"cpuCore", "pspModel", "language", "nickname", "buttonPreference",
 			"rtcBase", "cpuClock", "ioTiming", "timeZone", "daylightSavings",
 			"firmwareVersion", "macAddress", "dateFormat", "timeFormat",
-			"parentalLevel", "funcReplacements", "encryptSave",
+			"parentalLevel", "funcReplacements", "encryptSave", "renderer",
 		};
 		char buf[128];
 		for (size_t i = 0; i < sizeof(kKeys) / sizeof(kKeys[0]); i++)
@@ -176,6 +177,19 @@ ECL_EXPORT int Init(void)
 		}
 	}
 
+	// Where the Vulkan renderer's framebuffers are copied before a state: a
+	// block every state carries (address space only until something is
+	// written into it) and a scratch block no state carries. Reserved now,
+	// before the machine exists, so they are at the same place in every state.
+	{
+		static const size_t kBlock = (size_t)128 << 20, kScratch = (size_t)9 << 20;
+		void *block = mmap(nullptr, kBlock, PROT_READ | PROT_WRITE,
+		                   MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+		void *scratch = alloc_invisible(kScratch);
+		if (block != MAP_FAILED && scratch)
+			pspdrv_shadow_blocks(block, kBlock, scratch, kScratch);
+	}
+
 	std::string err;
 	if (!pspdrv_boot(cfg, &err)) {
 		snprintf(g_loadError, sizeof g_loadError, "%s", err.c_str());
@@ -229,6 +243,30 @@ ECL_EXPORT void FrameAdvance(uint64_t input)
  * the game can read back as a texture, so the drawing is part of the machine.
  * run-gate.sh's turbo leg is the proof - half a run undrawn leaves the same
  * machine, and the same pictures once drawing resumes. */
+// The Vulkan bridge, handed over before Init when the frontend has one; the
+// Renderer setting decides whether it is used ("vulkan-hw").
+extern "C" void chimera_psp_install_vulkan_bridge(uint64_t addr);
+ECL_EXPORT void SetVulkanBridge(uint64_t addr)
+{
+	chimera_psp_install_vulkan_bridge(addr);
+}
+
+// Optional export: the engine calls it after every load of the machine, with
+// the machine stopped. Under the Vulkan renderer that is when the device its
+// objects were made on is gone (psp-driver.cpp, RebuildVulkan).
+ECL_EXPORT void StateLoaded(void)
+{
+	pspdrv_state_loaded();
+}
+
+// Optional export: the engine calls it before every state it takes. Under the
+// Vulkan renderer what the framebuffers hold is copied into the core's memory
+// here (psp-driver.cpp, pspdrv_state_saving).
+ECL_EXPORT void StateSaving(void)
+{
+	pspdrv_state_saving();
+}
+
 ECL_EXPORT void SetRenderingEnabled(int on)
 {
 	g_render = on != 0;

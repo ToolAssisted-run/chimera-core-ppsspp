@@ -113,7 +113,38 @@ lzmasdk_srcs() {
 	done
 }
 
+# The Vulkan renderer (chimera issue 248), compiled for the guest only: the
+# reference flavour has no Chimera to hand it a Vulkan device. PPSSPP's Vulkan
+# backend and the layer under it, the memory allocator, and the translator its
+# post-processing shaders go through.
+vulkan_srcs() {
+	# (not the debug overlay: it draws through the UI, which this core has none of)
+	ls "$pp"/GPU/Vulkan/*.cpp "$pp"/Common/GPU/Vulkan/*.cpp | grep -v -e "/DebugVisVulkan.cpp$"
+	echo "$pp/Common/GPU/ShaderTranslation.cpp"
+	echo "$pp/ext/vma/vk_mem_alloc.cpp"
+}
+
+# glslang, which turns the GLSL PPSSPP writes into SPIR-V: the front end and
+# the SPIR-V writer, without the optimiser (SPIRV-Tools) and without HLSL.
+glslang_srcs() {
+	g="$pp/ext/glslang"
+	find "$g/glslang/MachineIndependent" "$g/glslang/GenericCodeGen" -name '*.cpp'
+	echo "$g/glslang/OSDependent/Unix/ossource.cpp"
+	echo "$g/OGLCompilersDLL/InitializeDll.cpp"
+	find "$g/SPIRV" -maxdepth 1 -name '*.cpp' | grep -v -e "/SpvTools.cpp$"
+}
+
+# SPIRV-Cross, which ShaderTranslation.cpp reads a compiled shader back with.
+spirvcross_srcs() {
+	for f in spirv_cross spirv_cross_util spirv_cfg spirv_cross_parsed_ir spirv_parser spirv_glsl; do
+		echo "$pp/ext/SPIRV-Cross/$f.cpp"
+	done
+}
+
 case "${1:-main}" in
+	vulkan) vulkan_srcs | sort ;;
+	glslang) glslang_srcs | sort ;;
+	spirv-cross) spirvcross_srcs | sort ;;
 	main)
 		{ core_srcs; common_srcs; gpu_srcs; ext_srcs; ls waterbox/stubs/*.cpp; } | sort
 		;;
@@ -122,5 +153,5 @@ case "${1:-main}" in
 	chdr-deps) chdr_srcs | grep '/deps/' | sort ;;
 	chdr) chdr_srcs | grep -v '/deps/' | sort ;;
 	lzmasdk) lzmasdk_srcs | sort ;;
-	*) echo "usage: sources.sh [main|chdr|chdr-deps|lzmasdk]" >&2; exit 2 ;;
+	*) echo "usage: sources.sh [main|chdr|chdr-deps|lzmasdk|vulkan|glslang|spirv-cross]" >&2; exit 2 ;;
 esac

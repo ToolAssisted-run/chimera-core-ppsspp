@@ -396,3 +396,95 @@ which fails on the build that was published. The other directory listings
 in Core were there on the old pin too and are not reached. A gate that never
 opens a game the way a user does was the hole, and a new pin is when it
 costs.
+
+## The Vulkan renderer (user-decided, 2026-10-11, chimera#248)
+
+The owner decided that every core whose emulator has a Vulkan renderer offers
+it. This core had the software renderer only. Now there is a Renderer
+setting: `software`, the default, and `vulkan-hw` - PPSSPP's Vulkan renderer,
+drawing on the computer's graphics card through Chimera's Vulkan bridge. It
+is in the guest only (the reference flavour has no Chimera to hand it a
+device), it draws at the PSP's own 480x272, and it has nothing to fall back
+on: on a computer that hands no Vulkan over, Init refuses and says why.
+
+The renderer is part of the machine, as the CPU core is. The two renderers do
+not account the same time for drawing, and a game that waits on the GPU then
+runs differently: Crash Tag Team Racing's memory differs between them by
+frame 600. Beta Bloc and the test programs show no difference. What does NOT
+depend on anything outside the core is the machine under Vulkan: its memory
+at frame 3600 of Crash Tag Team Racing is byte for byte the same drawn by
+Mesa's lavapipe on Linux and by a GeForce GTX 1060 on Windows. Only the
+picture is the card's.
+
+What it took (patch 0003, 10 files of PPSSPP, and the adapter):
+
+- **The sources.** `GPU/Vulkan`, `Common/GPU/Vulkan`, the shader translator
+  and the memory allocator (waterbox/sources.sh, `vulkan`), and two of
+  PPSSPP's submodules that were not fetched before: `ext/glslang`, compiled
+  in without its optimiser and without HLSL, and `ext/SPIRV-Cross`.
+- **The functions.** Upstream opens the Vulkan library. The bridge's guest
+  half is linked into the core instead, and `VulkanLoader.cpp` asks it for
+  each command by name.
+- **No window.** Upstream already has it: `VulkanGraphicsContext`'s offscreen
+  mode, which its own headless program uses, draws into images of its own.
+  What was left was that the instance insisted on a surface extension and
+  the device asked for the swapchain one; neither exists here. The adapter
+  closes and opens the draw context's frame once per displayed frame, as the
+  headless program does, and reads the picture back inside it.
+- **Memory.** Upstream requires coherent memory for its push buffers, "to
+  not get memory where we have to manually flush". Through the bridge no
+  memory is coherent, so the pools flush what they were given before every
+  submit of commands, and ask for cached memory. A pool's block that is
+  started again for a new frame starts unflushed - forgetting that drew
+  Crash Tag Team Racing's title with the previous frame's vertices, in the
+  straight run and not after a load, which is how it was found. The
+  allocator's blocks are 16 MiB.
+- **A load.** A load is a new Vulkan device. PPSSPP already knows how to
+  lose a device and get one back (Android takes its away): the adapter calls
+  `DeviceLost`, shuts the context down, starts it again and calls
+  `DeviceRestore` (`RebuildVulkan` in psp-driver.cpp). While the old objects
+  are let go of, no command crosses the bridge (`vk-shim.cpp`).
+- **What is only on the card.** `DeviceLost` throws every framebuffer away,
+  and a game that has stopped drawing never makes its picture again. So
+  before a state the colour of every framebuffer is copied into a block of
+  the core's memory, a device lost because of a load keeps the framebuffers
+  themselves, and after the restore each gets a new image with the copy
+  drawn into it (`FramebufferManagerCommon::Chimera*`). Depth and stencil
+  are not carried; no game tried showed a difference.
+
+The core's sandbox runner (`run-wbx`) hands the Vulkan bridge over when
+`CHIMERA_GPU` asks, tells the core before each state and after each load, as
+the frontend does, and can write a screenshot. `run-gate.sh` also runs
+`tests/run-game-gate.sh` now (written on 2026-10-08 and left uncommitted
+until this change).
+
+Measured on Mesa's lavapipe (2026-10-12):
+
+- triangle.prx, 60 frames: memory and sound are the software renderer's; 282
+  of 130,560 pixels differ by more than 8 levels of 255, along the
+  triangle's edges. A state saved and loaded around every frame is the
+  straight run, picture included, with no command refused; with the core
+  left untold before each state, the picture is not.
+- Beta Bloc played by its committed movie, 4188 frames: memory and sound are
+  the software renderer's, and a state saved and loaded around every frame
+  changes nothing, picture included.
+
+Measured on a GeForce GTX 1060 (Windows, driver 581.42, Vulkan 1.4.312)
+through chimera-run.exe, with no input, from power-on:
+
+- Crash Tag Team Racing, 8400 frames (through its opening film to the title
+  screen): 8.4 s with Vulkan, 37.5 s with the software renderer. Two Vulkan
+  runs end on the same memory and the same picture.
+- Twelve frames drawn after a load, compared with the frames first drawn:
+  all twelve exact in Crash Tag Team Racing at frames 3600, 6000 and 8400,
+  in Beta Bloc at 3600 and in The 3rd Birthday at 3600 and 7200. With the
+  core left untold, between one and three of the twelve are not exact.
+- Crash Tag Team Racing, eight times back from frame 8400 to 8150 and
+  forward again: the last picture and the memory are the straight run's,
+  byte for byte. It took 34.2 s against 25.8 s for the same run without
+  going back.
+
+Not measured: a game played with input on the card, any card other than this
+one, and the frontend's window (only its command-line runner). Not offered:
+a resolution above the PSP's own. The `vk:` checks in the test script run on
+lavapipe, which is not a graphics card.

@@ -19,6 +19,9 @@ struct PspDrvConfig {
 	// CPU core: 0 = interpreter, 1 = JIT, 2 = IR interpreter (matches CPUCore).
 	// The default matches waterbox.config's cpuCore default: jit.
 	int cpuCore = 1;
+	// Which renderer draws: 0 = PPSSPP's software renderer, 1 = its Vulkan
+	// renderer on the graphics card ("vulkan-hw", the guest only).
+	int renderer = 0;
 	// Fixed worker-thread count (determinism: never derive from the machine).
 	int threads = 2;
 	// PSP model: 0 = PSP-1000, 1 = Slim (more RAM).
@@ -68,6 +71,14 @@ struct PspDrvInput {
 // Returns false for an unknown key or unparseable value; one implementation
 // for the guest adapter and the native reference, so the two sides can never
 // drift.
+// Told after every load of the machine (a savestate, a greenzone restore),
+// with the machine stopped and before it runs again.
+void pspdrv_state_loaded();
+// Told before every state the engine takes; and where what it copies goes
+// (the guest reserves the two blocks once, during Init).
+void pspdrv_state_saving();
+void pspdrv_shadow_blocks(void *block, size_t blockBytes, void *scratch, size_t scratchBytes);
+
 bool pspdrv_apply_setting(PspDrvConfig &cfg, const char *key, const char *value);
 
 // Parse "YYYY-MM-DD HH:MM:SS" into seconds since the Unix epoch with plain

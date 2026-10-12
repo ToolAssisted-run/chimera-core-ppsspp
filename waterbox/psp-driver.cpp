@@ -1,6 +1,12 @@
 // The chimera PPSSPP driver. See psp-driver.h. Modeled on headless/Headless.cpp
 // (the System_* surface, the config block) and libretro/libretro.cpp (the
 // frame-stepping loop); both are part of PPSSPP, GPL-2.0-or-later, like this file.
+#ifdef CHIMERA_GUEST_VK
+#include "Common/GPU/Vulkan/VulkanGraphicsContext.h"
+#endif
+#include "Common/GPU/thin3d.h"
+#include "GPU/Common/FramebufferManagerCommon.h"
+#include "GPU/GPUCommon.h"
 #include "psp-driver.h"
 
 #include <cctype>
@@ -189,6 +195,133 @@ const char *const pspdrv_font_files[] = {
 };
 const int pspdrv_font_file_count = (int)(sizeof(pspdrv_font_files) / sizeof(pspdrv_font_files[0]));
 
+// The Vulkan renderer's context, when the Renderer setting chose it (the guest
+// only), and its draw context.
+static bool g_onVulkan;
+#ifdef CHIMERA_GUEST_VK
+extern "C" int chimera_psp_vulkan_bridge_present(void);
+extern "C" uint64_t chimera_psp_vulkan_context(void);
+extern "C" void chimera_psp_vulkan_quiet(void);
+extern "C" void chimera_psp_vulkan_old_device_gone(void);
+static VulkanGraphicsContext *g_vulkan;
+static Draw::DrawContext *VulkanDraw() {
+	return g_onVulkan && g_vulkan ? g_vulkan->GetDrawContext() : nullptr;
+}
+
+// Makes the windowless Vulkan context: a device, and images to draw into.
+static bool StartVulkan(std::string *message) {
+	g_vulkan->SetOffscreen(480, 272);
+	return g_vulkan->InitAPI(nullptr, &g_Config.sVulkanDevice, message) &&
+	       g_vulkan->InitSurface(WINDOWSYSTEM_NONE, nullptr, nullptr, message);
+}
+
+// A SAVESTATE LOADED INTO CHIMERA IS A NEW VULKAN DEVICE (chimera issue 248).
+// The frontend destroys its device at every load and makes another; a handle
+// from before the load is refused there. PPSSPP already knows how to lose a
+// device and get one back (Android takes its away): DeviceLost drops every
+// object the GPU made, DeviceRestore makes what has to exist. Around them the
+// context itself is shut down and started again. While the old objects are
+// let go of, no command crosses the bridge (vk-shim.cpp) - they are gone on
+// the frontend's side already.
+//
+// Set after a load (pspdrv_state_loaded), read and cleared at the head of the
+// next frame; and the device the renderer's objects were made on, which is in
+// emulated memory so that a load brings back the value the state was made under.
+static bool g_stateLoaded;
+static uint64_t g_vulkanDevice;
+
+// What the framebuffers held, copied before a state and given back after a
+// load (FramebufferManagerCommon.h). The block is in every state; the scratch
+// block is not. g_shadowCurrent: the block holds this device's framebuffers
+// (set by a save, cleared by the next frame). g_shadowUsable: what the last
+// load brought can be given back (worked out after the load).
+static uint8_t *g_shadowBlock, *g_shadowScratch;
+static size_t g_shadowBlockBytes, g_shadowScratchBytes;
+static bool g_shadowCurrent, g_shadowUsable;
+
+static FramebufferManagerCommon *Framebufs() {
+	return gpu ? gpu->GetFramebufferManagerCommon() : nullptr;
+}
+
+static void RebuildVulkan(bool keep) {
+	chimera_psp_vulkan_quiet();
+	if (keep && Framebufs())
+		Framebufs()->ChimeraKeepFramebufs();
+	if (gpu)
+		gpu->DeviceLost();
+	g_vulkan->ShutdownSurface();
+	g_vulkan->ShutdownAPI();
+	chimera_psp_vulkan_old_device_gone();
+
+	std::string message;
+	if (!StartVulkan(&message)) {
+		fprintf(stderr, "chimera: the Vulkan renderer could not start again after a load: %s\n", message.c_str());
+		return;
+	}
+	Draw::DrawContext *draw = g_vulkan->GetDrawContext();
+	if (gpu)
+		gpu->DeviceRestore(draw);
+	draw->BeginFrame(Draw::DebugFlags::NONE);
+	if (keep && Framebufs())
+		Framebufs()->ChimeraRestoreFramebufs(g_shadowBlock, g_shadowBlockBytes, g_shadowUsable);
+}
+
+static void CheckVulkanDevice() {
+	if (!g_onVulkan)
+		return;
+	const bool afterLoad = g_stateLoaded;
+	g_stateLoaded = false;
+	const uint64_t live = chimera_psp_vulkan_context();
+	// 0 is "cannot tell", and a renderer that cannot tell assumes nothing moved
+	if (live == 0)
+		return;
+	if (live != g_vulkanDevice && (g_vulkanDevice != 0 || afterLoad))
+		RebuildVulkan(afterLoad);
+	g_vulkanDevice = live;
+	g_shadowUsable = false;
+	g_shadowCurrent = false;
+}
+#else
+static Draw::DrawContext *VulkanDraw() {
+	return nullptr;
+}
+static void CheckVulkanDevice() {}
+#endif
+
+// Told after every load of the machine, before it runs again.
+void pspdrv_state_loaded() {
+#ifdef CHIMERA_GUEST_VK
+	g_stateLoaded = true;
+	g_shadowUsable = g_shadowCurrent;
+#endif
+}
+
+// Told before every state the engine takes, the machine stopped at a frame's
+// end. Not when the objects are another device's - a state taken after a load
+// and before the next frame, whose copy is the one the load brought.
+void pspdrv_state_saving() {
+#ifdef CHIMERA_GUEST_VK
+	if (!g_onVulkan || !Framebufs() || !g_shadowBlock)
+		return;
+	const uint64_t live = chimera_psp_vulkan_context();
+	if (live == 0 || live != g_vulkanDevice)
+		return;
+	Framebufs()->ChimeraSaveFramebufs(g_shadowBlock, g_shadowBlockBytes, g_shadowScratch, g_shadowScratchBytes);
+	g_shadowCurrent = true;
+#endif
+}
+
+// Where that copy goes, handed over during Init - before any state exists, so
+// that every state there will ever be has the block at the same place.
+void pspdrv_shadow_blocks(void *block, size_t blockBytes, void *scratch, size_t scratchBytes) {
+#ifdef CHIMERA_GUEST_VK
+	g_shadowBlock = (uint8_t *)block;
+	g_shadowBlockBytes = blockBytes;
+	g_shadowScratch = (uint8_t *)scratch;
+	g_shadowScratchBytes = scratchBytes;
+#endif
+}
+
 static bool matchOption(const char *value, const char *const *options, int n, int *out) {
 	for (int i = 0; i < n; i++)
 		if (strcmp(value, options[i]) == 0) { *out = i; return true; }
@@ -196,6 +329,12 @@ static bool matchOption(const char *value, const char *const *options, int n, in
 }
 
 bool pspdrv_apply_setting(PspDrvConfig &cfg, const char *key, const char *value) {
+	if (strcmp(key, "renderer") == 0) {
+		if (strcmp(value, "software") == 0) cfg.renderer = 0;
+		else if (strcmp(value, "vulkan-hw") == 0) cfg.renderer = 1;
+		else return false;
+		return true;
+	}
 	if (strcmp(key, "cpuCore") == 0) {
 		if (strcmp(value, "jit") == 0) cfg.cpuCore = 1;
 		else if (strcmp(value, "interpreter") == 0) cfg.cpuCore = 0;
@@ -433,10 +572,45 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 		CreateSysDirectories();
 	}
 
+	// The Renderer setting's "vulkan-hw" (chimera issue 248): PPSSPP's Vulkan
+	// renderer, on the Vulkan device Chimera hands the core, drawing into
+	// images of its own - upstream's windowless mode, which its own headless
+	// program uses. It has nothing to fall back on that the project agreed to.
+	GraphicsContext *graphics = nullptr;
+	g_onVulkan = false;
+	if (cfg.renderer == 1) {
+#ifdef CHIMERA_GUEST_VK
+		if (!chimera_psp_vulkan_bridge_present()) {
+			if (error)
+				*error = "the renderer setting is vulkan-hw, and no Vulkan was handed over (this computer may "
+				         "have no Vulkan driver, or this Chimera is older than its Vulkan bridge).";
+			return false;
+		}
+		g_Config.bSoftwareRendering = false;
+		g_Config.iGPUBackend = (int)GPUBackend::VULKAN;
+		// commands are run where they are recorded, not on a thread of their own
+		g_Config.bRenderMultiThreading = false;
+		g_Config.iInflightFrames = 1;
+		std::string message;
+		g_vulkan = new VulkanGraphicsContext();
+		if (!StartVulkan(&message)) {
+			if (error)
+				*error = "the Vulkan renderer could not start: " + message;
+			return false;
+		}
+		graphics = g_vulkan;
+		g_onVulkan = true;
+#else
+		if (error)
+			*error = "the renderer setting is vulkan-hw, and this build has no Vulkan renderer.";
+		return false;
+#endif
+	}
+
 	CoreParameter coreParameter;
 	coreParameter.cpuCore = (CPUCore)cfg.cpuCore;
-	coreParameter.gpuCore = GPUCORE_SOFTWARE;
-	coreParameter.graphicsContext = nullptr;
+	coreParameter.gpuCore = g_onVulkan ? GPUCORE_VULKAN : GPUCORE_SOFTWARE;
+	coreParameter.graphicsContext = graphics;
 	coreParameter.enableSound = true;
 	coreParameter.fileToStart = Path(cfg.bootPath);
 	coreParameter.mountIso.clear();
@@ -482,6 +656,9 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	coreState = CORE_RUNNING_CPU;
 	g_prevButtons = 0;
 	g_audioAccum.clear();
+	// the draw context's frame, open between the host frames (see TurnDrawFrame)
+	if (Draw::DrawContext *draw = VulkanDraw())
+		draw->BeginFrame(Draw::DebugFlags::NONE);
 	return true;
 }
 
@@ -502,6 +679,18 @@ extern "C" void chimera_vblank_start(void) {
 	g_vblankSeen = true;
 	if (coreState == CORE_RUNNING_CPU)
 		coreState = CORE_NEXTFRAME;
+}
+
+// Closes the draw context's frame and opens the next, the way upstream's
+// headless program does once per displayed frame: Vulkan's push buffers are
+// recycled by BeginFrame, and a frame that is never presented never finishes.
+// Nothing is shown anywhere: "presenting" hands the image back to the pool.
+static void TurnDrawFrame() {
+	if (Draw::DrawContext *draw = VulkanDraw()) {
+		draw->EndFrame();
+		draw->Present(Draw::PresentMode::FIFO);
+		draw->BeginFrame(Draw::DebugFlags::NONE);
+	}
 }
 
 static void ReadbackVideo() {
@@ -575,6 +764,10 @@ void pspdrv_run_frame(const PspDrvInput &input) {
 	__CtrlSetAnalogXY(CTRL_STICK_LEFT, input.leftX / 128.0f, input.leftY / 128.0f);
 	__CtrlSetAnalogXY(CTRL_STICK_RIGHT, input.rightX / 128.0f, input.rightY / 128.0f);
 
+	// before the machine steps, and with no host frame open: has a load left
+	// the Vulkan renderer's objects on a device that is gone?
+	CheckVulkanDevice();
+
 	const DisplayLayoutConfig &layout = g_Config.GetDisplayLayoutConfig(g_display.GetDeviceOrientation());
 	if (gpu)
 		gpu->BeginHostFrame(layout);
@@ -597,6 +790,7 @@ void pspdrv_run_frame(const PspDrvInput &input) {
 		PSP_RunLoopWhileState();
 		if (coreState == CORE_NEXTFRAME && !g_vblankSeen && gpu) {
 			gpu->EndHostFrame();
+			TurnDrawFrame();
 			gpu->BeginHostFrame(layout);
 		} else if (coreState == CORE_POWERDOWN || coreState == CORE_RUNTIME_ERROR) {
 			break;
@@ -614,6 +808,8 @@ void pspdrv_run_frame(const PspDrvInput &input) {
 	// last frame that was read back.
 	if (g_render)
 		ReadbackVideo();
+	// (after the readback: Vulkan reads a framebuffer back inside a frame)
+	TurnDrawFrame();
 	g_audioFrame.swap(g_audioAccum);
 	g_audioAccum.clear();
 }

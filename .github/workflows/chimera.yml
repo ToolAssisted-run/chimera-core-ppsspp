@@ -54,7 +54,7 @@ jobs:
           cd extern/ppsspp
           git submodule update --init --depth 1 \
             ext/zstd ext/cpu_features ext/rapidjson ext/libchdr ext/lua \
-            ext/aemu_postoffice pspautotests ffmpeg
+            ext/aemu_postoffice ext/glslang ext/SPIRV-Cross pspautotests ffmpeg
 
       - name: Check out Chimera (for the miniBox waterbox host and toolchain)
         uses: actions/checkout@v6
@@ -67,7 +67,8 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends meson ninja-build build-essential python3
+          sudo apt-get install -y --no-install-recommends meson ninja-build build-essential python3 \
+            libvulkan1 mesa-vulkan-drivers
 
       - name: Check out miniBox
         working-directory: chimera-checkout
@@ -127,7 +128,7 @@ jobs:
           cd extern/ppsspp
           git submodule update --init --depth 1 \
             ext/zstd ext/cpu_features ext/rapidjson ext/libchdr ext/lua \
-            ext/aemu_postoffice pspautotests ffmpeg
+            ext/aemu_postoffice ext/glslang ext/SPIRV-Cross pspautotests ffmpeg
 
       - name: Check out Chimera
         uses: actions/checkout@v6

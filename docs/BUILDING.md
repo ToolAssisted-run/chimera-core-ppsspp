@@ -26,8 +26,13 @@ installs them:
 
 ```sh
 sudo apt-get update
-sudo apt-get install -y --no-install-recommends meson ninja-build build-essential python3
+sudo apt-get install -y --no-install-recommends meson ninja-build build-essential python3 \
+  libvulkan1 mesa-vulkan-drivers
 ```
+
+The last two are a Vulkan driver that draws on the processor (Mesa's
+lavapipe), for the checks of the Vulkan renderer. Nothing needs them to build,
+and without a Vulkan driver those checks say SKIP.
 
 The `frontend-gate` job, which also builds Chimera, installs:
 
@@ -82,11 +87,13 @@ git submodule update --init --depth 1 extern/ppsspp
 cd extern/ppsspp
 git submodule update --init --depth 1 \
   ext/zstd ext/cpu_features ext/rapidjson ext/libchdr ext/lua \
-  ext/aemu_postoffice pspautotests ffmpeg
+  ext/aemu_postoffice ext/glslang ext/SPIRV-Cross pspautotests ffmpeg
 ```
 
 `pspautotests` is the test content of both gates. `ffmpeg` is the fork the
-build compiles.
+build compiles. `ext/glslang` and `ext/SPIRV-Cross` are the shader compiler
+and the shader reader of PPSSPP's Vulkan renderer, which the guest has (the
+Renderer setting's `vulkan-hw`).
 
 Get Chimera. For the core and the core gate, miniBox is the only submodule
 needed, and that is what the `core-gate` job initialises:

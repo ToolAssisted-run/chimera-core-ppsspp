@@ -16,7 +16,10 @@ std::string g_all_gl_extensions;
 std::string g_all_egl_extensions;
 
 // --- Vulkan probing (Core/Config.cpp asks) ---
+// (the guest has the real one: its Vulkan renderer is compiled in)
+#ifndef CHIMERA_GUEST_VK
 bool VulkanMayBeAvailable() { return false; }
+#endif
 
 // --- VR ---
 bool IsVREnabled() { return false; }
@@ -26,11 +29,13 @@ bool IsGameVRScene() { return false; }
 bool IsImmersiveVRMode() { return false; }
 
 // --- shader translation (postshaders only; never used with softgpu) ---
+#ifndef CHIMERA_GUEST_VK
 bool TranslateShader(std::string *dst, ShaderLanguage destLang, const ShaderLanguageDesc &desc, TranslatedShaderMetadata *destMetadata, std::string src, ShaderLanguage srcLang, ShaderStage stage, std::string *errorMessage) {
 	if (errorMessage)
 		*errorMessage = "shader translation is compiled out of this build";
 	return false;
 }
+#endif
 
 // --- websocket debugger ---
 void HandleDebuggerRequest(const http::ServerRequest &request) {}

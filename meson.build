@@ -42,6 +42,12 @@ defs = [
   '-DUSE_FFMPEG=1',
   '-Wno-deprecated-declarations',
 ]
+# The Vulkan renderer is the guest's only (chimera issue 248): what it draws
+# with is the Vulkan device Chimera hands the core, and the reference flavour
+# has no Chimera.
+if meson.is_cross_build()
+  defs += ['-DCHIMERA_GUEST_VK']
+endif
 add_project_arguments(defs, language: ['c', 'cpp'])
 
 inc = include_directories(
@@ -50,6 +56,7 @@ inc = include_directories(
   pp / 'ext/cpu_features/include', pp / 'ext/libchdr/include',
   pp / 'ext/libchdr/deps/lzma-24.05/include', pp / 'ext/rapidjson/include',
   pp / 'ext/libzip', pp / 'ext/lzma-sdk',
+  pp / 'ext/glslang',   # as upstream's build has it: glslang's headers name each other from here
   'waterbox',
 )
 
@@ -106,6 +113,34 @@ chdr_deps_lib = static_library('chdr-deps', chdr_deps_sources,
   include_directories: inc,
   c_args: ['-D__SWITCH__'])   # libchdr's CpuArch.c reuses this workaround, as upstream does
 chdr_lib = static_library('chdr', chdr_sources, include_directories: inc)
+
+# ---- the Vulkan renderer's libraries (guest only) ---------------------------
+# glslang compiles the GLSL PPSSPP writes into SPIR-V, SPIRV-Cross reads a
+# compiled shader back, and the guest half of miniBox's Vulkan bridge is a
+# wrapper per Vulkan command that hands the call to the frontend - generated
+# from the SHARED list in miniBox, so an opcode means here what it means there.
+vk_sources = []
+vk_libs = []
+if meson.is_cross_build()
+  vk_sources = files(run_command(sources_sh, 'vulkan', check: true).stdout().strip().split('\n'))
+  # "-Dthread_local=": glslang keeps its allocator per thread. The guest has
+  # one thread that compiles shaders, so the variables are ordinary ones.
+  vk_libs += static_library('glslang',
+    files(run_command(sources_sh, 'glslang', check: true).stdout().strip().split('\n')),
+    include_directories: include_directories(pp / 'ext/glslang', pp / 'ext/glslang-build', pp / 'ext'),
+    cpp_args: ['-DENABLE_OPT=0', '-Dthread_local=', '-w'])
+  vk_libs += static_library('spirv-cross',
+    files(run_command(sources_sh, 'spirv-cross', check: true).stdout().strip().split('\n')),
+    cpp_args: ['-DSPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS', '-w'])
+  vk_mb = meson.get_external_property('minibox_dir')
+  vk_bridge = custom_target('vk-bridge',
+    output: ['vk-bridge-guest.c', 'vk-bridge-ops.h', 'vk-bridge-host.inc'],
+    command: [py, vk_mb / 'source/vk/gen-vk-bridge.py',
+      vk_mb / 'extern/vulkan-headers/registry/vk.xml',
+      vk_mb / 'source/vk/vk-entry-points.txt', '@OUTDIR@'])
+  vk_libs += static_library('vk-bridge-guest', [files(vk_mb / 'source/vk/vk-guest.c'), vk_bridge[0], vk_bridge[1]],
+    c_args: ['-I' + vk_mb / 'source/vk', '-I' + vk_mb / 'extern/vulkan-headers/include', '-I' + meson.current_build_dir()])
+endif
 lzmasdk_lib = static_library('lzmasdk', lzmasdk_sources, include_directories: inc)
 
 driver_sources = files(
@@ -127,13 +162,14 @@ if meson.is_cross_build()
   sr = meson.get_external_property('guest_sysroot')
 
   executable('core',
-    core_sources + driver_sources + [assets[0], git_version] + files(
+    core_sources + vk_sources + driver_sources + [assets[0], git_version] + files(
       'waterbox/waterbox.cpp',
+      'waterbox/vk-shim.cpp',
       'waterbox/guest-stubs/guest-syscalls.cpp'),
     name_suffix: 'wbx',
     include_directories: [inc, ffmpeg_inc],
     dependencies: [assets_table],
-    link_with: [chdr_deps_lib, chdr_lib, lzmasdk_lib],
+    link_with: [chdr_deps_lib, chdr_lib, lzmasdk_lib] + vk_libs,
     link_args: [
       '-static', '-no-pie',
       '-Wl,--eh-frame-hdr', '-Wl,-O2', '-Wl,--no-relax',
@@ -178,7 +214,18 @@ else
   if mbhost == ''
     error('no libminiboxhost.so under ' + mb + '/build/{meson-linux,meson-cpp}; build miniBox first')
   endif
-  executable('run-wbx', files('waterbox/run-wbx.c'),
-    c_args: ['-I' + mb / 'source/host'],
+  # run-wbx carries the host half of miniBox's Vulkan bridge, generated from
+  # the list the guest's wrappers are generated from, and hands it to the core
+  # when CHIMERA_GPU asks. Vulkan is looked for when a run starts: nothing is
+  # needed to build this, and a computer without a driver runs the rest.
+  vk_bridge_host = custom_target('vk-bridge',
+    output: ['vk-bridge-guest.c', 'vk-bridge-ops.h', 'vk-bridge-host.inc'],
+    command: [py, mb / 'source/vk/gen-vk-bridge.py',
+      mb / 'extern/vulkan-headers/registry/vk.xml',
+      mb / 'source/vk/vk-entry-points.txt', '@OUTDIR@'])
+  executable('run-wbx', files('waterbox/run-wbx.c', mb / 'source/vk/vk-host.c') + [vk_bridge_host[1], vk_bridge_host[2]],
+    c_args: ['-I' + mb / 'source/host', '-DCHIMERA_VK_BRIDGE', '-I' + mb / 'source/vk',
+      '-I' + mb / 'extern/vulkan-headers/include', '-I' + meson.current_build_dir()],
+    dependencies: [dl],
     link_args: [mbhost / 'libminiboxhost.so', '-Wl,-rpath,' + mbhost])
 endif
