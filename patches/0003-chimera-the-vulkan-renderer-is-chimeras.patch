@@ -1,4 +1,5 @@
 diff --git a/Common/GPU/Shader.cpp b/Common/GPU/Shader.cpp
+index 02d7cb4ef3..50e6e43336 100644
 --- a/Common/GPU/Shader.cpp
 +++ b/Common/GPU/Shader.cpp
 @@ -6,7 +6,7 @@
@@ -10,7 +11,7 @@ diff --git a/Common/GPU/Shader.cpp b/Common/GPU/Shader.cpp
  #include "ext/glslang/SPIRV/GlslangToSpv.h"
  #endif
  
-@@ -118,7 +118,7 @@
+@@ -118,7 +118,7 @@ void ShaderLanguageDesc::Init(ShaderLanguage lang) {
  	}
  }
  
@@ -20,9 +21,10 @@ diff --git a/Common/GPU/Shader.cpp b/Common/GPU/Shader.cpp
  	Resources.maxLights = 32;
  	Resources.maxClipPlanes = 6;
 diff --git a/Common/GPU/Vulkan/VulkanContext.cpp b/Common/GPU/Vulkan/VulkanContext.cpp
+index ba988a2f40..fa48722f87 100644
 --- a/Common/GPU/Vulkan/VulkanContext.cpp
 +++ b/Common/GPU/Vulkan/VulkanContext.cpp
-@@ -143,15 +143,22 @@
+@@ -143,15 +143,22 @@ VkResult VulkanContext::CreateInstance(const CreateInfo &info) {
  	GetInstanceLayerProperties();
  	GetInstanceLayerExtensionList(nullptr, &instance_extension_properties_);
  
@@ -45,7 +47,7 @@ diff --git a/Common/GPU/Vulkan/VulkanContext.cpp b/Common/GPU/Vulkan/VulkanConte
  	instance_extensions_enabled_.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
  #ifdef _WIN32
  	instance_extensions_enabled_.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-@@ -182,6 +189,7 @@
+@@ -182,6 +189,7 @@ VkResult VulkanContext::CreateInstance(const CreateInfo &info) {
  	}
  #endif
  #endif
@@ -53,7 +55,7 @@ diff --git a/Common/GPU/Vulkan/VulkanContext.cpp b/Common/GPU/Vulkan/VulkanConte
  
  	if ((createInfo_.flags & VulkanInitFlags::VALIDATE) && info.customDriver.empty()) {
  		if (IsInstanceExtensionAvailable(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
-@@ -698,7 +706,10 @@
+@@ -698,7 +706,10 @@ VkResult VulkanContext::CreateDevice(int physical_device, const std::vector<cons
  
  	GetDeviceExtensionList(&device_extension_properties_);
  
@@ -64,7 +66,7 @@ diff --git a/Common/GPU/Vulkan/VulkanContext.cpp b/Common/GPU/Vulkan/VulkanConte
  
  	// A host application (e.g. a libretro frontend) may require extra device extensions on top of what we'd
  	// normally ask for.
-@@ -923,6 +934,12 @@
+@@ -932,6 +943,12 @@ VkResult VulkanContext::CreateDevice(int physical_device, const std::vector<cons
  	VulkanSetAvailable(true);
  
  	VmaAllocatorCreateInfo allocatorInfo = {};
@@ -78,6 +80,7 @@ diff --git a/Common/GPU/Vulkan/VulkanContext.cpp b/Common/GPU/Vulkan/VulkanConte
  	allocatorInfo.physicalDevice = physical_devices_[physical_device_];
  	allocatorInfo.device = device_;
 diff --git a/Common/GPU/Vulkan/VulkanFrameData.cpp b/Common/GPU/Vulkan/VulkanFrameData.cpp
+index f33d36e0bf..f2ccdaf05e 100644
 --- a/Common/GPU/Vulkan/VulkanFrameData.cpp
 +++ b/Common/GPU/Vulkan/VulkanFrameData.cpp
 @@ -1,3 +1,4 @@
@@ -85,7 +88,7 @@ diff --git a/Common/GPU/Vulkan/VulkanFrameData.cpp b/Common/GPU/Vulkan/VulkanFra
  #include <mutex>
  
  #include "VulkanFrameData.h"
-@@ -246,6 +247,9 @@
+@@ -246,6 +247,9 @@ void FrameData::Submit(VulkanContext *vulkan, FrameSubmitType type, FrameDataSha
  		VLOG("Doing queue submit, fencing frame %d", this->index);
  		// The fence is waited on by the main thread, they are not allowed to access it simultaneously.
  		vulkan->LockQueue();
@@ -95,7 +98,7 @@ diff --git a/Common/GPU/Vulkan/VulkanFrameData.cpp b/Common/GPU/Vulkan/VulkanFra
  		res = vkQueueSubmit(vulkan->GetGraphicsQueue(), 1, &submit_info, fenceToTrigger);
  		vulkan->UnlockQueue();
  		if (sharedData.useMultiThreading) {
-@@ -256,6 +260,9 @@
+@@ -256,6 +260,9 @@ void FrameData::Submit(VulkanContext *vulkan, FrameSubmitType type, FrameDataSha
  	} else {
  		VLOG("Doing queue submit, fencing something (%p)", fenceToTrigger);
  		vulkan->LockQueue();
@@ -106,9 +109,10 @@ diff --git a/Common/GPU/Vulkan/VulkanFrameData.cpp b/Common/GPU/Vulkan/VulkanFra
  		vulkan->UnlockQueue();
  	}
 diff --git a/Common/GPU/Vulkan/VulkanGraphicsContext.cpp b/Common/GPU/Vulkan/VulkanGraphicsContext.cpp
+index 71ea559d9e..a67b27aeb8 100644
 --- a/Common/GPU/Vulkan/VulkanGraphicsContext.cpp
 +++ b/Common/GPU/Vulkan/VulkanGraphicsContext.cpp
-@@ -170,8 +170,11 @@
+@@ -170,8 +170,11 @@ bool VulkanGraphicsContext::InitAPI(void *wnd, std::string *deviceName, std::str
  
  	init_glslang();
  
@@ -121,9 +125,10 @@ diff --git a/Common/GPU/Vulkan/VulkanGraphicsContext.cpp b/Common/GPU/Vulkan/Vul
  
  	std::string errorStr;
 diff --git a/Common/GPU/Vulkan/VulkanLoader.cpp b/Common/GPU/Vulkan/VulkanLoader.cpp
+index 86ec0b6d9e..79561c8192 100644
 --- a/Common/GPU/Vulkan/VulkanLoader.cpp
 +++ b/Common/GPU/Vulkan/VulkanLoader.cpp
-@@ -664,8 +664,35 @@
+@@ -664,8 +664,35 @@ bool VulkanMayBeAvailable() {
  #endif
  }
  
@@ -143,7 +148,7 @@ diff --git a/Common/GPU/Vulkan/VulkanLoader.cpp b/Common/GPU/Vulkan/VulkanLoader
 +#endif
 +
  bool VulkanLoad(std::string *errorStr) {
--#if PPSSPP_PLATFORM(IOS_APP_STORE)
+-#if PPSSPP_VK_STATIC
 +#ifdef CHIMERA_GUEST_VK
 +	vkCreateInstance = (PFN_vkCreateInstance)chimera_vk_lookup("vkCreateInstance");
 +	vkGetInstanceProcAddr = ChimeraInstanceProcAddr;
@@ -156,24 +161,25 @@ diff --git a/Common/GPU/Vulkan/VulkanLoader.cpp b/Common/GPU/Vulkan/VulkanLoader
 +		return false;
 +	}
 +	return true;
-+#elif PPSSPP_PLATFORM(IOS_APP_STORE)
++#elif PPSSPP_VK_STATIC
  	INFO_LOG(Log::G3D, "iOS: Vulkan doesn't need loading");
  	return true;
  #else
-@@ -946,6 +973,9 @@
+@@ -946,6 +973,9 @@ void VulkanLoadDeviceFunctions(VkDevice device, const VulkanExtensions &enabledE
  }
  
  void VulkanFree() {
 +#ifdef CHIMERA_GUEST_VK
 +	return;
 +#endif
- #if !PPSSPP_PLATFORM(IOS_APP_STORE)
+ #if !PPSSPP_VK_STATIC
  	VulkanFreeLibrary(vulkanLibrary);
  #endif
 diff --git a/Common/GPU/Vulkan/VulkanMemory.cpp b/Common/GPU/Vulkan/VulkanMemory.cpp
+index c18e9719da..21b65c7c7a 100644
 --- a/Common/GPU/Vulkan/VulkanMemory.cpp
 +++ b/Common/GPU/Vulkan/VulkanMemory.cpp
-@@ -31,9 +31,34 @@
+@@ -31,9 +31,34 @@ using namespace PPSSPP_VK;
  // Always keep around push buffers at least this long (seconds).
  static const double PUSH_GARBAGE_COLLECTION_DELAY = 10.0;
  
@@ -208,7 +214,7 @@ diff --git a/Common/GPU/Vulkan/VulkanMemory.cpp b/Common/GPU/Vulkan/VulkanMemory
  
  	for (int i = 0; i < VulkanContext::MAX_INFLIGHT_FRAMES; i++) {
  		blocks_.push_back(CreateBlock(originalBlockSize));
-@@ -43,6 +68,7 @@
+@@ -43,6 +68,7 @@ VulkanPushPool::VulkanPushPool(VulkanContext *vulkan, const char *name, size_t o
  }
  
  VulkanPushPool::~VulkanPushPool() {
@@ -216,7 +222,7 @@ diff --git a/Common/GPU/Vulkan/VulkanMemory.cpp b/Common/GPU/Vulkan/VulkanMemory
  	UnregisterGPUMemoryManager(this);
  	_dbg_assert_(blocks_.empty());
  }
-@@ -66,7 +92,15 @@
+@@ -66,7 +92,15 @@ VulkanPushPool::Block VulkanPushPool::CreateBlock(size_t size) {
  	VmaAllocationCreateInfo allocCreateInfo{};
  
  	allocCreateInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
@@ -232,7 +238,7 @@ diff --git a/Common/GPU/Vulkan/VulkanMemory.cpp b/Common/GPU/Vulkan/VulkanMemory
  	VmaAllocationInfo allocInfo{};
  	
  	VkResult result = vmaCreateBuffer(vulkan_->Allocator(), &b, &allocCreateInfo, &block.buffer, &block.allocation, &allocInfo);
-@@ -99,6 +133,7 @@
+@@ -99,6 +133,7 @@ void VulkanPushPool::BeginFrame() {
  				block.lastUsed = now;
  			}
  			block.used = 0;
@@ -240,7 +246,7 @@ diff --git a/Common/GPU/Vulkan/VulkanMemory.cpp b/Common/GPU/Vulkan/VulkanMemory
  			if (!block.original) {
  				// Return block to the common pool
  				block.frameIndex = -1;
-@@ -137,6 +172,7 @@
+@@ -137,6 +172,7 @@ void VulkanPushPool::NextBlock(VkDeviceSize allocationSize) {
  		if ((block.frameIndex == curFrameIndex || block.frameIndex == -1) && block.size >= allocationSize) {
  			_assert_(block.used == 0);
  			block.used = allocationSize;
@@ -248,7 +254,7 @@ diff --git a/Common/GPU/Vulkan/VulkanMemory.cpp b/Common/GPU/Vulkan/VulkanMemory
  			block.lastUsed = time_now_d();
  			block.frameIndex = curFrameIndex;
  			_assert_(block.writePtr != nullptr);
-@@ -197,7 +233,10 @@
+@@ -197,7 +233,10 @@ void VulkanBuffer::Create(VulkanContext *vulkan, const char *name, VkDeviceSize
  	VmaAllocationCreateInfo allocCreateInfo{};
  
  	allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -260,9 +266,10 @@ diff --git a/Common/GPU/Vulkan/VulkanMemory.cpp b/Common/GPU/Vulkan/VulkanMemory
  
  	VkResult result = vmaCreateBuffer(vulkan->Allocator(), &b, &allocCreateInfo, &buffer_, &allocation_, &allocInfo);
 diff --git a/Common/GPU/Vulkan/VulkanMemory.h b/Common/GPU/Vulkan/VulkanMemory.h
+index 1313d21813..f390c182ea 100644
 --- a/Common/GPU/Vulkan/VulkanMemory.h
 +++ b/Common/GPU/Vulkan/VulkanMemory.h
-@@ -77,6 +77,8 @@
+@@ -77,6 +77,8 @@ class VulkanPushPool : public GPUMemoryManager {
  
  		VkDeviceSize size;
  		VkDeviceSize used;
@@ -271,7 +278,7 @@ diff --git a/Common/GPU/Vulkan/VulkanMemory.h b/Common/GPU/Vulkan/VulkanMemory.h
  
  		int frameIndex;  // -1 means that it's "common", it can be grabbed by any frame as needed.
  		bool original;  // these blocks aren't garbage collected.
-@@ -89,6 +91,14 @@
+@@ -89,6 +91,14 @@ class VulkanPushPool : public GPUMemoryManager {
  
  	Block CreateBlock(size_t sz);
  
@@ -286,7 +293,7 @@ diff --git a/Common/GPU/Vulkan/VulkanMemory.h b/Common/GPU/Vulkan/VulkanMemory.h
  	VulkanContext *vulkan_;
  	VkDeviceSize originalBlockSize_;
  	std::vector<Block> blocks_;
-@@ -114,3 +124,7 @@
+@@ -114,3 +124,7 @@ class VulkanBuffer {
  	VmaAllocation allocation_ = VK_NULL_HANDLE;
  	VkDeviceSize size_ = 0;  // convenience
  };
@@ -295,9 +302,10 @@ diff --git a/Common/GPU/Vulkan/VulkanMemory.h b/Common/GPU/Vulkan/VulkanMemory.h
 +// time; called before each submit of commands (VulkanFrameData.cpp).
 +void ChimeraFlushPushPools();
 diff --git a/GPU/Common/FramebufferManagerCommon.cpp b/GPU/Common/FramebufferManagerCommon.cpp
+index e42233a40f..fb19aca2e3 100644
 --- a/GPU/Common/FramebufferManagerCommon.cpp
 +++ b/GPU/Common/FramebufferManagerCommon.cpp
-@@ -3573,8 +3573,143 @@
+@@ -3687,8 +3687,143 @@ void FramebufferManagerCommon::ReleasePipelines() {
  	DoRelease(draw2DPipeline565ToDepthDeswizzle_);
  }
  
@@ -443,9 +451,10 @@ diff --git a/GPU/Common/FramebufferManagerCommon.cpp b/GPU/Common/FramebufferMan
  	presentation_->DeviceLost();
  	draw2D_.DeviceLost();
 diff --git a/GPU/Common/FramebufferManagerCommon.h b/GPU/Common/FramebufferManagerCommon.h
+index 137f4ebc39..8bc36ef11c 100644
 --- a/GPU/Common/FramebufferManagerCommon.h
 +++ b/GPU/Common/FramebufferManagerCommon.h
-@@ -340,6 +340,21 @@
+@@ -340,6 +340,21 @@ class FramebufferManagerCommon {
  	void SetDepthFrameBuffer(bool isClearingDepth);
  
  	void RebindFramebuffer(const char *tag);
@@ -467,7 +476,7 @@ diff --git a/GPU/Common/FramebufferManagerCommon.h b/GPU/Common/FramebufferManag
  	std::vector<const VirtualFramebuffer *> GetFramebufferList() const;
  
  	void PrepareCopyDisplayToOutput(const DisplayLayoutConfig &config, bool reallyDirty);
-@@ -626,6 +641,7 @@
+@@ -628,6 +643,7 @@ class FramebufferManagerCommon {
  	bool postShaderIsSupersampling_ = false;
  
  	std::vector<VirtualFramebuffer *> vfbs_;
@@ -476,6 +485,7 @@ diff --git a/GPU/Common/FramebufferManagerCommon.h b/GPU/Common/FramebufferManag
  
  	std::vector<DrawPixelsEntry> drawPixelsCache_;
 diff --git a/GPU/GPU.cpp b/GPU/GPU.cpp
+index d6cf506232..96881dcd14 100644
 --- a/GPU/GPU.cpp
 +++ b/GPU/GPU.cpp
 @@ -33,6 +33,10 @@
@@ -489,7 +499,7 @@ diff --git a/GPU/GPU.cpp b/GPU/GPU.cpp
  
  #if PPSSPP_API(D3D11) && !defined(SOFTGPU_ONLY)
  #include "GPU/D3D11/GPU_D3D11.h"
-@@ -49,6 +53,14 @@
+@@ -49,6 +53,14 @@ static GPUCommon *CreateGPUCore(GPUCore gpuCore, GraphicsContext *ctx, Draw::Dra
  	switch (gpuCore) {
  	case GPUCORE_SOFTWARE:
  		return new SoftGPU(ctx, draw);

@@ -29,8 +29,9 @@ Three prior bodies of work exist (see README for links):
 
 ## Architecture decisions
 
-- **Upstream pin**: `extern/ppsspp` = hrydgard/ppsspp @ master 761cf347e6 (2026-10-09), unmodified
-  (v1.20.4 until then; see "The pin moved to master").
+- **Upstream pin**: `extern/ppsspp` = hrydgard/ppsspp @ master deca5f432d (2026-10-11), unmodified
+  (761cf347e6 from 2026-10-09, v1.20.4 before that; see "The pin moved to master" and
+  "The pin moved again").
   Local changes live in `patches/` (git apply at build time), kept as small as possible;
   prefer solving problems in the adapter. If the series grows, move to a proper fork
   under ToolAssisted-run.
@@ -396,6 +397,84 @@ which fails on the build that was published. The other directory listings
 in Core were there on the old pin too and are not reached. A gate that never
 opens a game the way a user does was the hole, and a new pin is when it
 costs.
+
+## The pin moved again (user-decided, 2026-10-13, chimera#228)
+
+Asked for: upstream's newer software renderer (hrydgard/ppsspp#22486 and the
+work around it), which the reporter of chimera#228 named on 2026-10-10. The
+answer then was "not now"; on 2026-10-13 the owner asked for the move. The
+upstream version this core builds is now deca5f432d, master as of 2026-10-11
+18:24 (+0200): 139 commits after the last one, 32 of them in `GPU/Software`.
+
+**Why not the newest commit.** Master on the day was 4c48f85664, and the core
+was first moved there. Its tests passed, and Crash Tag Team Racing no longer
+started: a flat picture, and a log full of "Path is relative, but current
+directory not set for thread" and "file does not exist". The cause is
+upstream's 4fda53a62e (2026-10-11 19:08, "sceKernelLoadModule: Put the module
+in memory when the wait ends"): the module's file is now read later, from a
+timed event, where the thread that asked is not the current one, so a module
+named by a relative path (`prx/sc_sascore.prx`) is not found. It is an
+upstream fault one day old. Of pinning the commit before it, carrying a patch
+of our own for it, and taking master as it was, the owner chose the first.
+deca5f432d is that commit; the 90 commits after it are mostly Android, menu
+and Vulkan work. The core moves on when upstream has fixed it.
+
+What the move needed:
+
+- Upstream removed the software renderer's own code generators (the pixel and
+  sampler JITs) and its setting. Patch 0001 lost the two hunks that guarded
+  them, the driver no longer sets `bSoftwareRenderingJit`, and the removed
+  files left the source list by themselves (`sources.sh` describes the set by
+  shape).
+- `GPU/Software/Rasterizer.cpp` keeps a line's pixels in a thread-local
+  vector. The sandbox build has no thread-local storage through `%fs` to give
+  it, so there it is an ordinary static (patch 0001): the sandbox's threads
+  run one at a time, and the vector is filled and read within one call.
+- Upstream now keeps the JIT's block handles out of the PSP's memory, in a
+  table of its own ("block shadow", hrydgard/ppsspp#22494), and on a 64-bit
+  host reserves 1 GiB for it. The sandbox's whole memory arena is 1 GiB, and
+  nothing started: "arena exhausted ... 1024 MiB wanted". Upstream has a
+  256 MiB table for iOS and the Switch; patch 0001 selects it for this core,
+  in both flavours, so the two stay the same machine.
+- Patch 0003: two hunks of `VulkanLoader.cpp` were ported by hand (upstream
+  renamed the "library is linked in" case to `PPSSPP_VK_STATIC`). Patch 0002
+  is unchanged.
+
+Measured on Linux (2026-10-13), the package before against the package after,
+software renderer, every frame drawn, through `chimera-run`:
+
+| Game | Frames | Before | After |
+|------|--------|--------|-------|
+| Beta Bloc, its committed movie | 4188 | 8.9 s | 7.5 s |
+| Beta Bloc, no input | 3600 | 7.5 s | 6.5 s |
+| Ridge Racer (.chd) | 1500 | 7.9 s | 6.8 s |
+| Arcade Essentials | 1500 | 3.2 s | 2.8 s |
+| Crash Tag Team Racing (.iso) | 1500 | 3.5 s | 3.3 s |
+| Crash Tag Team Racing (.chd) | 1500 | 3.9 s | 3.4 s |
+
+So 5 to 15 percent less time, with the picture at the last frame byte for
+byte the same before and after in every row (and at frames 1000, 2500 and
+4187 of the Beta Bloc movie). One run each, so the small differences are not
+to be read closely. The PSP's memory at the end is NOT the same before and
+after (Beta Bloc's movie, Crash Tag Team Racing): the machine differs in
+detail, as it did at the last move, and a movie that leans on exact timing
+may not survive being moved over. A project stays with the package it was
+made with.
+
+Tests at deca5f432d: `run-gate.sh` 16 passed, 0 failed, 1 skipped (the
+LittleBigPlanet image is not here); `tests/run-frontend.sh` 6 passed,
+including the one that opens a program through a project.
+
+On Windows, the same package through `chimera-run.exe`: with the software
+renderer, the Beta Bloc movie and 1500 frames of Crash Tag Team Racing end
+with the memory and the pictures of the Linux runs, byte for byte. With the
+Vulkan renderer on a GeForce GTX 1060 (Vulkan 1.4.312) both games run and
+draw their scenes; Beta Bloc's memory at the end is the software renderer's,
+Crash Tag Team Racing's is not, as before the move (see "The Vulkan
+renderer"). Beta Bloc's movie took 8.6 s in software and 7.7 s on the card.
+
+**Not shown.** No game with heavy 3D was timed for long, and the package
+before was not timed on Windows. The reporter's own games were not tried.
 
 ## The Vulkan renderer (user-decided, 2026-10-11, chimera#248)
 

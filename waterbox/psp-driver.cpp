@@ -544,7 +544,6 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	g_Config.iInternalResolution = 1;
 	g_Config.bVertexDecoderJit = true;
 	g_Config.bSoftwareRendering = true;
-	g_Config.bSoftwareRenderingJit = true;
 	g_Config.iSplineBezierQuality = 2;
 	g_Config.bHighQualityDepth = true;
 	g_Config.bMemStickInserted = true;

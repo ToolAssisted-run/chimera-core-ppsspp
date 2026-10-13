@@ -64,10 +64,10 @@ index 38598a2d7e..8f41fd9d0c 100644
  #else
  	size_t size = 0x10000000;
 diff --git a/Common/MemoryUtil.cpp b/Common/MemoryUtil.cpp
-index d4de2cf131..4d9dc16692 100644
+index 7817c37db3..9bedca8fad 100644
 --- a/Common/MemoryUtil.cpp
 +++ b/Common/MemoryUtil.cpp
-@@ -198,6 +198,11 @@ void *AllocateExecutableMemory(size_t size) {
+@@ -204,6 +204,11 @@ void *AllocateExecutableMemory(size_t size) {
  	if (PlatformIsWXExclusive())
  		prot = PROT_READ | PROT_WRITE;  // POST_EXEC is added later in this case.
  
@@ -157,7 +157,7 @@ index a82a1f1ccf..55761d42cb 100644
  #if defined(_WIN32) && !PPSSPP_PLATFORM(UWP)
  
 diff --git a/Core/ELF/ElfReader.cpp b/Core/ELF/ElfReader.cpp
-index 1bf565e11b..b53e9bb039 100644
+index 2fbf5be361..0cbcb2b87a 100644
 --- a/Core/ELF/ElfReader.cpp
 +++ b/Core/ELF/ElfReader.cpp
 @@ -1091,6 +1091,15 @@ static int LoadSymbolsFromCompanion(const std::string &data, u32 moduleBase, u32
@@ -261,11 +261,27 @@ index 508fe1e96f..7fc0d3700e 100644
  
  LuaContext g_lua;
  
+diff --git a/Core/MemMap.h b/Core/MemMap.h
+index 0ac3684f13..62eb09f2ce 100644
+--- a/Core/MemMap.h
++++ b/Core/MemMap.h
+@@ -113,7 +113,10 @@ enum {
+ 	// kernel and uncached mirrors onto the same entry, the way they share physical memory.
+ 	// Where address space is short, bits 28-29 are dropped too, so garbage PCs with those bits
+ 	// set alias real code instead of faulting.
+-#if PPSSPP_ARCH(64BIT) && !PPSSPP_PLATFORM(IOS) && !PPSSPP_PLATFORM(SWITCH)
++	// CHIMERA_WATERBOX: the sandbox is one of the places address space is short. Its whole
++	// arena for mappings is 1 GiB, which the large shadow alone would take, so both flavours
++	// of the core (the sandboxed one and the reference it is compared with) use the small one.
++#if PPSSPP_ARCH(64BIT) && !PPSSPP_PLATFORM(IOS) && !PPSSPP_PLATFORM(SWITCH) && !defined(CHIMERA_WATERBOX)
+ 	BLOCK_SHADOW_MASK = 0x3FFFFFFF,
+ #else
+ 	BLOCK_SHADOW_MASK = 0x0FFFFFFF,
 diff --git a/Core/PSPLoaders.cpp b/Core/PSPLoaders.cpp
-index 091bdcc95f..c8b280dccb 100644
+index 49d2de3d6e..16c5567af9 100644
 --- a/Core/PSPLoaders.cpp
 +++ b/Core/PSPLoaders.cpp
-@@ -515,7 +515,14 @@ bool Load_PSP_ELF_PBP(FileLoader *fileLoader, std::string_view discId, bool load
+@@ -518,7 +518,14 @@ bool Load_PSP_ELF_PBP(FileLoader *fileLoader, std::string_view discId, bool load
  		host0Dir = full_path.NavigateUp();
  	}
  
@@ -368,41 +384,23 @@ index d9502fc6e8..d6cf506232 100644
  #endif
  	default:
  		return nullptr;
-diff --git a/GPU/Software/DrawPixel.h b/GPU/Software/DrawPixel.h
-index 0d758aa653..e5a7311dbd 100644
---- a/GPU/Software/DrawPixel.h
-+++ b/GPU/Software/DrawPixel.h
-@@ -67,6 +67,14 @@ struct PixelBlendState {
- };
- void ComputePixelBlendState(PixelBlendState &state, const PixelFuncID &id);
+diff --git a/GPU/Software/Rasterizer.cpp b/GPU/Software/Rasterizer.cpp
+index de1b7269fe..c9341583cf 100644
+--- a/GPU/Software/Rasterizer.cpp
++++ b/GPU/Software/Rasterizer.cpp
+@@ -2726,7 +2726,15 @@ void DrawLine(const VertexData &v0, const VertexData &v1, const BinCoords &range
  
-+// CHIMERA_GUEST: direct TLS would compile to %fs-relative access, which
-+// inside the miniBox sandbox points at HOST TLS (see chimera-core-ppsspp).
-+// Green threads run one at a time, and these are keyed caches / cosmetic
-+// state, so plain statics are safe.
+ 	const int steps1 = steps == 0 ? 1 : steps;
+ 	const LineUV lineUV = state.enableTextures && !state.throughMode ? ComputeLineUV(v0, v1, state.textureProj) : LineUV{};
++	// CHIMERA_GUEST: direct TLS would compile to %fs-relative access, which
++	// inside the miniBox sandbox points at HOST TLS (see chimera-core-ppsspp).
++	// Green threads run one at a time, and this is scratch space filled and
++	// read within one call, so a plain static is safe.
 +#ifdef CHIMERA_GUEST
-+#define thread_local
++	static std::vector<LinePixel> pixels;
++#else
+ 	static thread_local std::vector<LinePixel> pixels;
 +#endif
-+
- class PixelJitCache : public Rasterizer::CodeBlock {
- public:
- 	PixelJitCache();
-diff --git a/GPU/Software/Sampler.h b/GPU/Software/Sampler.h
-index b4124559a7..eb5542da13 100644
---- a/GPU/Software/Sampler.h
-+++ b/GPU/Software/Sampler.h
-@@ -60,6 +60,14 @@ void Shutdown();
- 
- bool DescribeCodePtr(const u8 *ptr, std::string &name);
- 
-+// CHIMERA_GUEST: direct TLS would compile to %fs-relative access, which
-+// inside the miniBox sandbox points at HOST TLS (see chimera-core-ppsspp).
-+// Green threads run one at a time, and these are keyed caches / cosmetic
-+// state, so plain statics are safe.
-+#ifdef CHIMERA_GUEST
-+#define thread_local
-+#endif
-+
- class SamplerJitCache : public Rasterizer::CodeBlock {
- public:
- 	SamplerJitCache();
+ 	LinePixels(a.x, a.y, b.x, b.y, pixels);
+ 	for (const LinePixel &lp : pixels) {
+ 		const int i = std::clamp((int)lroundf(lp.t * steps), 0, steps);

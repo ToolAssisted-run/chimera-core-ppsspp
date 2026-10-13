@@ -144,7 +144,7 @@ CI keeps that directory between runs with `actions/cache@v4` and skips
 
 ### Patches
 
-`patches/` holds the patch series against `extern/ppsspp` (two patches).
+`patches/` holds the patch series against `extern/ppsspp` (three patches).
 `waterbox/apply-patches.sh` applies it, and meson runs that script every time
 either flavour is configured, so there is nothing to do by hand. The script
 takes each patch in order: a patch that applies cleanly is applied, and any
