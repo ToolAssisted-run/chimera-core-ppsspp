@@ -7,3 +7,5 @@ waterbox/obj-guest/
 waterbox/obj-native/
 waterbox/tests/work/
 *.wbx
+# what the sandbox writes when a run ends badly
+minibox-diag.log
