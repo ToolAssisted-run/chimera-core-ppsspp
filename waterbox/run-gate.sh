@@ -8,6 +8,11 @@
 # Usage: ./run-gate.sh [-n <native build dir>] [-g <guest build dir>] [-f frames] [file...]
 #   With no files, runs a small default set from pspautotests (free content).
 set -u
+# The sandbox has no time zone: the guest's C library reads every time as UTC.
+# The native reference reads this computer's, and a game that stats a file on
+# its disc gets the file's date converted by it - LittleBigPlanet's differed
+# by two hours on a computer at UTC+2. The reference runs in UTC too.
+export TZ=UTC
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"
 natdir="$root/build/meson-native"

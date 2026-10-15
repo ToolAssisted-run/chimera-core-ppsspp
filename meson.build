@@ -137,7 +137,11 @@ if meson.is_cross_build()
     output: ['vk-bridge-guest.c', 'vk-bridge-ops.h', 'vk-bridge-host.inc'],
     command: [py, vk_mb / 'source/vk/gen-vk-bridge.py',
       vk_mb / 'extern/vulkan-headers/registry/vk.xml',
-      vk_mb / 'source/vk/vk-entry-points.txt', '@OUTDIR@'])
+      vk_mb / 'source/vk/vk-entry-points.txt', '@OUTDIR@'],
+    # made again when miniBox changes any of them: a header left from an
+    # older generator does not compile against the newer vk-host.c
+    depend_files: files(vk_mb / 'source/vk/gen-vk-bridge.py',
+      vk_mb / 'extern/vulkan-headers/registry/vk.xml', vk_mb / 'source/vk/vk-entry-points.txt'))
   vk_libs += static_library('vk-bridge-guest', [files(vk_mb / 'source/vk/vk-guest.c'), vk_bridge[0], vk_bridge[1]],
     c_args: ['-I' + vk_mb / 'source/vk', '-I' + vk_mb / 'extern/vulkan-headers/include', '-I' + meson.current_build_dir()])
 endif
@@ -222,7 +226,9 @@ else
     output: ['vk-bridge-guest.c', 'vk-bridge-ops.h', 'vk-bridge-host.inc'],
     command: [py, mb / 'source/vk/gen-vk-bridge.py',
       mb / 'extern/vulkan-headers/registry/vk.xml',
-      mb / 'source/vk/vk-entry-points.txt', '@OUTDIR@'])
+      mb / 'source/vk/vk-entry-points.txt', '@OUTDIR@'],
+    depend_files: files(mb / 'source/vk/gen-vk-bridge.py',
+      mb / 'extern/vulkan-headers/registry/vk.xml', mb / 'source/vk/vk-entry-points.txt'))
   executable('run-wbx', files('waterbox/run-wbx.c', mb / 'source/vk/vk-host.c') + [vk_bridge_host[1], vk_bridge_host[2]],
     c_args: ['-I' + mb / 'source/host', '-DCHIMERA_VK_BRIDGE', '-I' + mb / 'source/vk',
       '-I' + mb / 'extern/vulkan-headers/include', '-I' + meson.current_build_dir()],

@@ -1,0 +1,57 @@
+diff --git a/Core/MIPS/x86/X64IRCompLoadStore.cpp b/Core/MIPS/x86/X64IRCompLoadStore.cpp
+index 7f2f5ac0fe..5d1ba78e1e 100644
+--- a/Core/MIPS/x86/X64IRCompLoadStore.cpp
++++ b/Core/MIPS/x86/X64IRCompLoadStore.cpp
+@@ -74,7 +74,14 @@ Gen::OpArg X64JitBackend::PrepareSrc1Address(IRInst inst) {
+ #ifdef MASKED_PSP_MEMORY
+ 		LEA(PTRBITS, SCRATCH1, MDisp(regs_.RX(inst.src1), disp));
+ 		AND(PTRBITS, R(SCRATCH1), Imm32(Memory::MEMVIEW32_MASK));
++#if PPSSPP_ARCH(AMD64)
++	// chimera: on x86-64 the memory base is in MEMBASEREG with masked memory
++	// too (the dispatcher loads it); a 64-bit base is no immediate an ADD or
++	// SUB can take, and no displacement either.
++		addrArg = MComplex(MEMBASEREG, SCRATCH1, SCALE_1, 0);
++#else
+ 		addrArg = MDisp(SCRATCH1, (intptr_t)Memory::base);
++#endif
+ #else
+ #if PPSSPP_ARCH(AMD64)
+ 		addrArg = MComplex(MEMBASEREG, regs_.RX(inst.src1), SCALE_1, disp);
+diff --git a/Core/MIPS/x86/X64IRCompSystem.cpp b/Core/MIPS/x86/X64IRCompSystem.cpp
+index 0fe7bcb262..d220fd6c92 100644
+--- a/Core/MIPS/x86/X64IRCompSystem.cpp
++++ b/Core/MIPS/x86/X64IRCompSystem.cpp
+@@ -399,7 +399,7 @@ void X64JitBackend::CompIR_ValidateAddress(IRInst inst) {
+ 
+ 	if (regs_.IsGPRMappedAsPointer(inst.src1)) {
+ 		LEA(PTRBITS, SCRATCH1, MDisp(regs_.RXPtr(inst.src1), inst.constant));
+-#if defined(MASKED_PSP_MEMORY)
++#if defined(MASKED_PSP_MEMORY) && !PPSSPP_ARCH(AMD64)
+ 		SUB(PTRBITS, R(SCRATCH1), ImmPtr(Memory::base));
+ #else
+ 		SUB(PTRBITS, R(SCRATCH1), R(MEMBASEREG));
+diff --git a/Core/MIPS/x86/X64IRRegCache.cpp b/Core/MIPS/x86/X64IRRegCache.cpp
+index a04ee29773..75204162e2 100644
+--- a/Core/MIPS/x86/X64IRRegCache.cpp
++++ b/Core/MIPS/x86/X64IRRegCache.cpp
+@@ -392,12 +392,19 @@ void X64IRRegCache::AdjustNativeRegAsPtr(IRNativeReg nreg, bool state) {
+ 		// This destroys the value...
+ 		_dbg_assert_(!nr[nreg].isDirty);
+ 		emit_->AND(PTRBITS, ::R(r), Imm32(Memory::MEMVIEW32_MASK));
++#if PPSSPP_ARCH(AMD64)
++		// chimera: on x86-64 the memory base is in MEMBASEREG with masked memory
++		// too (the dispatcher loads it); a 64-bit base is no immediate an ADD or
++		// SUB can take, and no displacement either.
++		emit_->ADD(PTRBITS, ::R(r), ::R(MEMBASEREG));
++#else
+ 		emit_->ADD(PTRBITS, ::R(r), ImmPtr(Memory::base));
++#endif
+ #else
+ 		emit_->ADD(PTRBITS, ::R(r), ::R(MEMBASEREG));
+ #endif
+ 	} else {
+-#if defined(MASKED_PSP_MEMORY)
++#if defined(MASKED_PSP_MEMORY) && !PPSSPP_ARCH(AMD64)
+ 		_dbg_assert_(!nr[nreg].isDirty);
+ 		emit_->SUB(PTRBITS, ::R(r), ImmPtr(Memory::base));
+ #else

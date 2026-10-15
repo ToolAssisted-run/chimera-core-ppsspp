@@ -29,9 +29,9 @@ Three prior bodies of work exist (see README for links):
 
 ## Architecture decisions
 
-- **Upstream pin**: `extern/ppsspp` = hrydgard/ppsspp @ master deca5f432d (2026-10-11), unmodified
-  (761cf347e6 from 2026-10-09, v1.20.4 before that; see "The pin moved to master" and
-  "The pin moved again").
+- **Upstream pin**: `extern/ppsspp` = hrydgard/ppsspp @ master 5fa79c6871 (2026-10-15), unmodified
+  (deca5f432d from 2026-10-13, 761cf347e6 from 2026-10-09, v1.20.4 before that; see "The pin
+  moved to master", "The pin moved again" and "The pin moved for Resistance: Retribution").
   Local changes live in `patches/` (git apply at build time), kept as small as possible;
   prefer solving problems in the adapter. If the series grows, move to a proper fork
   under ToolAssisted-run.
@@ -475,6 +475,66 @@ renderer"). Beta Bloc's movie took 8.6 s in software and 7.7 s on the card.
 
 **Not shown.** No game with heavy 3D was timed for long, and the package
 before was not timed on Windows. The reporter's own games were not tried.
+
+## The pin moved for Resistance: Retribution (2026-10-15, chimera#287)
+
+Asked for: three upstream changes for Resistance: Retribution, merged on
+2026-10-14 and 2026-10-15 (hrydgard/ppsspp#22571, #22581, #22582: the smoke,
+the crashes, the muzzle light). The upstream version this core builds is now
+5fa79c6871, master as of 2026-10-15 17:46 (+0200): 390 commits after the
+last one. It also holds #22583, upstream's fix for the Crash Tag Team Racing
+fault that kept the last move one commit short ("The pin moved again"), so
+the three changes were not taken alone: the commit right after them still
+had that fault.
+
+What the move needed:
+
+- **The JIT.** Upstream's x86 JIT is now built on its IR, like the ARM ones
+  ("every native JIT is IR-based"), and the old one is gone. The CPU Core
+  setting's `jit`, the default, is that one now. This core builds PPSSPP
+  with masked memory (the sandbox cannot map the PSP's memory twice), a mode
+  upstream builds only for 32-bit hosts: on x86-64 the new JIT added the
+  64-bit memory base to a register as an immediate, which x86 cannot encode,
+  and every game stopped at its first block ("Only MOV can take 64-bit
+  imm"). Patch 0004 uses the register that holds the base instead, as the
+  unmasked build does (RBX, loaded by the dispatcher and never handed out),
+  at the four places: a register made a pointer and back, a load or store's
+  address, and the check that an address is valid. With it the JIT and the IR
+  interpreter give the same picture, sound and video memory on the test
+  program, natively and in the sandbox.
+- **The test script and time zones.** The sandbox has no time zone; the
+  native reference used this computer's (UTC+2), and LittleBigPlanet stats
+  files on its disc, whose dates came out two hours apart. `run-gate.sh` now
+  runs everything in UTC. The shipped core was never affected.
+- **The build.** The Vulkan bridge's generated header was made once and
+  never again: the step that makes it named no inputs, so a newer miniBox
+  generator was not rerun and `vk-host.c` did not compile. It now names the
+  generator, `vk.xml` and the list of commands.
+- The three patches applied unchanged. FFmpeg's submodule did not move.
+  Upstream's new `AccurateVdot` (bit-exact VFPU dot products) is on by
+  default and the core leaves it so.
+
+Measured on Linux (2026-10-15), the published package (Development build
+dd161279) against this one, default settings (JIT, software renderer),
+1500 frames from power-on with no input, through `chimera-run`:
+
+| Game | Before | After | Picture at frame 600 |
+|------|--------|-------|----------------------|
+| The 3rd Birthday | 2.40 s | 2.41 s | the same |
+| Beta Bloc | 2.00 s | 1.92 s | the same |
+| Crash Tag Team Racing (.iso) | 2.43 s | 2.39 s | the same, a full scene |
+| LittleBigPlanet (.cso) | 4.45 s | 4.48 s | the same |
+| Ridge Racer (.chd) | 6.32 s | 5.94 s | the same |
+
+One run each. Tests: `run-gate.sh` 17 passed, 0 failed, 0 skipped
+(LittleBigPlanet included, its install and 2100 frames native == sandbox ==
+a state around every frame); `tests/run-frontend.sh` 6 passed.
+
+**Not shown.** Resistance: Retribution is not here, so the three changes
+asked for were not seen to work. Nothing was run on Windows or on a real
+graphics card; the Vulkan tests ran on Mesa's software Vulkan. Whether a
+movie made with the package before plays back with this one was not tried:
+the JIT is another one, and the memory of the last move's games differed.
 
 ## The Vulkan renderer (user-decided, 2026-10-11, chimera#248)
 
