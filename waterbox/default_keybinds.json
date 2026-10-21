@@ -8,10 +8,10 @@
 	],
 	"AllTrollers": {
 		"PSP Controller": {
-			"P1 Up": "Up, J1 POV1U, X1 DpadUp, X1 LStickUp",
-			"P1 Down": "Down, J1 POV1D, X1 DpadDown, X1 LStickDown",
-			"P1 Left": "Left, J1 POV1L, X1 DpadLeft, X1 LStickLeft",
-			"P1 Right": "Right, J1 POV1R, X1 DpadRight, X1 LStickRight",
+			"P1 Up": "Up, J1 POV0U, X1 DpadUp, X1 LStickUp",
+			"P1 Down": "Down, J1 POV0D, X1 DpadDown, X1 LStickDown",
+			"P1 Left": "Left, J1 POV0L, X1 DpadLeft, X1 LStickLeft",
+			"P1 Right": "Right, J1 POV0R, X1 DpadRight, X1 LStickRight",
 			"P1 Cross": "Z, J1 B2, X1 A",
 			"P1 Circle": "X, J1 B3, X1 B",
 			"P1 Square": "A, J1 B1, X1 X",
