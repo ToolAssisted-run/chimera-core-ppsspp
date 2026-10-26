@@ -93,13 +93,41 @@ run_frontend() {
 	} > "$job"
 	rm -f "$work/$tag.ram.bin" "$work/$tag.meta.txt"
 	[ -n "$shot" ] && rm -f "$shot"
+	local project
+	project="$(game_project "$tag" "$cfg" "$package" "$rom")" || { cp "$work/projects/$tag.make.log" "$work/$tag.log"; return 1; }
 	( cd "$chimera_root" && MINIHAWK_JOB="$job" timeout 900 mono "$emu_exe" --headless \
 		"--config=$cfg" "--core=$package" \
-		"--lua=$here/frontend-ram.lua" "$rom" ) > "$work/$tag.log" 2>&1
+		"--lua=$here/frontend-ram.lua" "--project=$project" ) > "$work/$tag.log" 2>&1
 	[ -f "$work/$tag.meta.txt" ] && grep -q "^status=OK" "$work/$tag.meta.txt"
 }
 
-settings_config() { python3 "$here/settings-config.py" "$config" "$1" "$2"; }
+# A game runs only in a project (Chimera, 2026-10-26): each run opens one made
+# of its game with chimera-run --new-project, holding the settings
+# settings_config was given for the config it runs with.
+declare -A settings_of firmware_of
+# <out config> <settings JSON> [<firmware JSON>]: the firmware is pinned in the
+# run's project as well as remembered in the config
+settings_config() {
+	python3 "$here/settings-config.py" "$config" "$1" "$2" ${3:+"$3"}
+	settings_of["$1"]="$2"
+	firmware_of["$1"]="${3:-}"
+}
+crun="$chimera_root/build/dll/chimera-run"
+game_project() { # tag, config, package, game: prints the project's path
+	local dir="$work/projects" settings="${settings_of[$2]:-}"
+	local pkg="$3" game="$4"
+	local fw=() pair
+	if [ -n "${firmware_of[$2]:-}" ]; then
+		while IFS= read -r pair; do fw+=(--firmware "$pair"); done < <(python3 -c \
+			'import json, sys; [print(k + "=" + v) for k, v in json.loads(sys.argv[1]).items()]' "${firmware_of[$2]}")
+	fi
+	# one copy of each game, every run's project beside it
+	local copy="$dir/$(basename "$game")"
+	mkdir -p "$dir"
+	[ -f "$copy" ] && [ "$(stat -c %s "$copy")" = "$(stat -c %s "$game")" ] || cp "$game" "$copy"
+	"$crun" --new-project "$dir/$1.chimeraProject" "$pkg" "$copy" \
+		--settings "${settings:-"{}"}" "${fw[@]}" > "$dir/$1.make.log" 2>&1 && echo "$dir/$1.chimeraProject"
+}
 
 for rom in "${roms[@]}"; do
 	name="$(basename "$rom")"
@@ -193,7 +221,7 @@ for e in cfg.get("firmware", []):
 print(json.dumps(out))
 PYFW
 )"
-	python3 "$here/settings-config.py" "$config" "$work/config.fontfw.ini" '{"fontSource": "sony"}' "$fwmap"
+	settings_config "$work/config.fontfw.ini" '{"fontSource": "sony"}' "$fwmap"
 	if run_frontend "fontbase" "$work/config.fontbase.ini" 120 \
 		&& run_frontend "fontfw" "$work/config.fontfw.ini" 120; then
 		h1="$(grep '^ramhash=' "$work/fontbase.meta.txt" | cut -d= -f2)"
@@ -229,8 +257,11 @@ elif [ ! -f "$gstdir/core.wbx" ]; then
 else
 	rm -rf "$work/sd.engine" "$work/sd.box"
 	python3 -c "open('$work/sd.movie.txt','w').write(('||    0,    0,............|'+chr(10))*20)"
+	# a game runs only in a project (Chimera, 2026-10-26): one of the program and that movie
+	( cd "$chimera_root" && LD_LIBRARY_PATH="$chimera_root/build/dll" "$crun" --new-project "$work/sd.chimeraProject" \
+		"$package" "$sd" "$work/sd.movie.txt" ) > "$work/sd.make.log" 2>&1
 	( cd "$chimera_root" && LD_LIBRARY_PATH="$chimera_root/build/dll" timeout 600 "$crun" \
-		"$package" "$sd" "$work/sd.movie.txt" --export-savedata "$work/sd.engine" ) \
+		--project "$work/sd.chimeraProject" "$package" --files "$(dirname "$sd")" --export-savedata "$work/sd.engine" ) \
 		> "$work/sd.engine.log" 2>&1
 	# run-wbx resolves its own libminiboxhost; the frontend's dll dir must not
 	# shadow it through the LD_LIBRARY_PATH this script exports. No --plain-rom:
