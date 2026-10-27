@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Asserts that the bindings a core package ships became the frontend's defaults for its controller.
+# Asserts that the bindings a core package ships are the machine's when nobody changed them.
 #
-# Usage: check-keybinds.py <config written by EmuHawk> <package default_keybinds.json> <controller>
+# Usage: check-keybinds.py <the machine's bindings (dump-controls.lua)> <package default_keybinds.json> <controller>
 import json
 import sys
 
@@ -28,7 +28,7 @@ if wantAnalog is not None:
         if gb is None:
             sys.exit(f"analog bind for '{axis}' was not adopted")
         for field, v in bind.items():
-            if gb.get(field) != v:
+            if gb.get(field) != v and not (gb.get(field) in (None, "") and v in (None, "")):
                 sys.exit(f"analog bind '{axis}.{field}' differs: shipped {v!r}, config {gb.get(field)!r}")
     nAnalog = len(wantAnalog)
 

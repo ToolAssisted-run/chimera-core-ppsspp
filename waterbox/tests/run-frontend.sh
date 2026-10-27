@@ -1,9 +1,9 @@
 #!/bin/bash
-# The frontend half of the gate: load the PPSSPP package in Chimera (under Mono,
-# on a private Xvfb display), emulate a fixed number of frames with nothing
-# pressed, and require a 64KB slice of user RAM to be byte-identical to the
-# native reference run. Then start once from a config that has never seen this
-# controller and require the bindings the package ships to become the defaults.
+# The frontend half of the gate: load the PPSSPP package in Chimera's window
+# (run headless: no display is needed), emulate a fixed number of frames with
+# nothing pressed, and require a 64KB slice of user RAM to be byte-identical to the
+# native reference run. Then require the bindings the package ships to be the
+# machine's when no key was changed.
 #
 # Usage:
 #   ./run-frontend.sh [--chimera-root <path>] [--frames N] [file...]
@@ -36,9 +36,9 @@ fi
 	echo "chimera checkout not found; pass --chimera-root <path>" >&2; exit 1; }
 chimera_root="$(cd "$chimera_root" && pwd)"
 
-emu_exe="$chimera_root/build/Chimera.exe"
+chimera_exe="$chimera_root/build/meson-linux/source/ui/chimera"
 package="$chimera_root/build/Cores/ppsspp.chimeraCore"
-[ -f "$emu_exe" ] || { echo "Chimera not built: $emu_exe" >&2; exit 1; }
+[ -x "$chimera_exe" ] || { echo "Chimera not built: $chimera_exe" >&2; exit 1; }
 [ -f "$package" ] || { echo "package not installed: $package (run ../build-package.sh)" >&2; exit 1; }
 natdir="$wb/../build/meson-native"
 gstdir="$wb/../build/meson-guest"
@@ -47,29 +47,11 @@ gstdir="$wb/../build/meson-guest"
 work="$here/work"
 mkdir -p "$work"
 
-export LD_LIBRARY_PATH="$chimera_root/build/dll:$chimera_root/build:/usr/lib/x86_64-linux-gnu"
-export MONO_CRASH_NOFILE=1 MONO_WINFORMS_XIM_STYLE=disabled ALSOFT_DRIVERS=null
-xvfb_pid=""
-cleanup() { [ -n "$xvfb_pid" ] && kill "$xvfb_pid" 2>/dev/null; }
-trap cleanup EXIT
-if [ -z "${DISPLAY:-}" ]; then
-	command -v Xvfb >/dev/null || { echo "Xvfb not found (apt install xvfb)" >&2; exit 1; }
-	for n in 90 91 92 93 94 95 96; do
-		if [ ! -e "/tmp/.X11-unix/X$n" ]; then
-			Xvfb ":$n" -screen 0 640x480x24 -nolisten tcp & xvfb_pid=$!
-			export DISPLAY=":$n"; break
-		fi
-	done
-	sleep 1
-fi
-
-config="$work/config.ini"
-if [ ! -f "$config" ]; then
-	( cd "$chimera_root" && timeout 120 mono "$emu_exe" --headless "--config=$config" \
-		"--lua=$here/exit.lua" ) > "$work/bootstrap.log" 2>&1
-	[ -f "$config" ] || { echo "config bootstrap failed (see $work/bootstrap.log)" >&2; exit 1; }
-fi
-sed -i 's/"DispMethod": [0-9]/"DispMethod": 1/' "$config"
+# Chimera's window, run headless: the cores installed in the checkout, its
+# settings, cache and recovery files the run's own, and nothing carried over
+# from a Chimera installed on this machine
+export ALSOFT_DRIVERS=null CHIMERA_CORES_DIR="$chimera_root/build/Cores" CHIMERA_QT_CACHE="$work/qt-cache" CHIMERA_QT_RECOVERY="$work/qt-recovery" \
+	CHIMERA_QT_HASHES="$work/qt-file-hashes.txt" CHIMERA_QT_CHIMERA_SETTINGS="$work/no-chimera-config.ini"
 
 ok=0
 failed=0
@@ -95,7 +77,7 @@ run_frontend() {
 	[ -n "$shot" ] && rm -f "$shot"
 	local project
 	project="$(game_project "$tag" "$cfg" "$package" "$rom")" || { cp "$work/projects/$tag.make.log" "$work/$tag.log"; return 1; }
-	( cd "$chimera_root" && MINIHAWK_JOB="$job" timeout 900 mono "$emu_exe" --headless \
+	( cd "$chimera_root" && MINIHAWK_JOB="$job" timeout 900 "$chimera_exe" --headless \
 		"--config=$cfg" "--core=$package" \
 		"--lua=$here/frontend-ram.lua" "--project=$project" ) > "$work/$tag.log" 2>&1
 	[ -f "$work/$tag.meta.txt" ] && grep -q "^status=OK" "$work/$tag.meta.txt"
@@ -105,10 +87,10 @@ run_frontend() {
 # of its game with chimera-run --new-project, holding the settings
 # settings_config was given for the config it runs with.
 declare -A settings_of firmware_of
-# <out config> <settings JSON> [<firmware JSON>]: the firmware is pinned in the
-# run's project as well as remembered in the config
+# <out settings> <settings JSON> [<firmware JSON>]: the firmware is pinned in the
+# run's project as well as remembered in the settings
 settings_config() {
-	python3 "$here/settings-config.py" "$config" "$1" "$2" ${3:+"$3"}
+	python3 "$here/settings-config.py" "$1" "$2" ${3:+"$3"}
 	settings_of["$1"]="$2"
 	firmware_of["$1"]="${3:-}"
 }
@@ -145,7 +127,7 @@ for rom in "${roms[@]}"; do
 	# The RAM-slice comparison needs the IR interpreter on both sides: the
 	# default JIT writes build-specific emuhack opcodes into RAM (the other
 	# legs ride the jit default - both of their sides are the guest build).
-	settings_config "$work/config.$name.ini" '{"cpuCore": "ir-interpreter"}'
+	settings_config "$work/settings.$name.json" '{"cpuCore": "ir-interpreter"}'
 
 	# --- the machine the frontend builds must be the one the gate signed off on ---
 	# The filename leaks into the machine (PPSSPP invents a DiscID from it for
@@ -157,7 +139,7 @@ for rom in "${roms[@]}"; do
 		> "$work/$name.native.txt" 2>"$work/$name.native.err"; then
 		report "$name:frontend" FAIL "native runner error: $(head -1 "$work/$name.native.err")"; continue
 	fi
-	if ! run_frontend "$name.base" "$work/config.$name.ini" "$frames" "$work/$name.base.png"; then
+	if ! run_frontend "$name.base" "$work/settings.$name.json" "$frames" "$work/$name.base.png"; then
 		report "$name:frontend" FAIL "no OK meta (see tests/work/$name.base.log)"; continue
 	fi
 	if cmp -s "$work/$name.native.slice.bin" "$work/$name.base.ram.bin"; then
@@ -170,8 +152,8 @@ for rom in "${roms[@]}"; do
 	# The PSP model is the crispest machine-shaping setting: a PSP-1000 has
 	# 32MB of RAM where the default Slim has 64MB, and the RAM domain's size
 	# says which machine actually booted.
-	settings_config "$work/config.$name.model.ini" '{"pspModel": "psp-1000"}'
-	if run_frontend "$name.model" "$work/config.$name.model.ini" 1; then
+	settings_config "$work/settings.$name.model.json" '{"pspModel": "psp-1000"}'
+	if run_frontend "$name.model" "$work/settings.$name.model.json" 1; then
 		got_ramsize="$(grep '^ramsize=' "$work/$name.model.meta.txt" | cut -d= -f2)"
 		if [ "$got_ramsize" = "33554432" ]; then
 			report "$name:settings:model" PASS "pspModel=psp-1000 booted a 32MB machine"
@@ -182,10 +164,18 @@ for rom in "${roms[@]}"; do
 		report "$name:settings:model" FAIL "run did not report OK (see tests/work/$name.model.log)"
 	fi
 
-	# --- the bindings the package ships must become the frontend's defaults ---
-	python3 "$here/forget-controller.py" "$work/config.$name.ini" "$work/config.$name.keys.ini" "PSP Controller"
-	if run_frontend "$name.keys" "$work/config.$name.keys.ini" 1; then
-		if python3 "$here/check-keybinds.py" "$work/config.$name.keys.ini" \
+	# --- the bindings the package ships are the machine's when nobody changed them
+	# (the window keeps only the keys a person changed; fresh settings have none)
+	settings_config "$work/settings.$name.keys.json" '{}'
+	if run_frontend "$name.keys" "$work/settings.$name.keys.json" 1; then
+		printf 'out=%s/%s.controls.json\nmeta=%s/%s.keysdump.txt\n' "$work" "$name" "$work" "$name" > "$work/job.$name.keysdump.txt"
+		rm -f "$work/$name.controls.json" "$work/$name.keysdump.txt"
+		( cd "$chimera_root" && MINIHAWK_JOB="$work/job.$name.keysdump.txt" timeout 900 "$chimera_exe" --headless \
+			"--config=$work/settings.$name.keys.json" "--project=$work/projects/$name.keys.chimeraProject" \
+			"--lua=$here/dump-controls.lua" ) >> "$work/$name.keys.log" 2>&1
+		if [ ! -f "$work/$name.keysdump.txt" ] || ! grep -q "^status=OK" "$work/$name.keysdump.txt"; then
+			report "$name:keybinds" FAIL "the bindings were not written (see tests/work/$name.keys.log)"
+		elif python3 "$here/check-keybinds.py" "$work/$name.controls.json" \
 			"$wb/default_keybinds.json" "PSP Controller" > "$work/$name.keys.txt" 2>&1; then
 			report "$name:keybinds" PASS "$(cat "$work/$name.keys.txt")"
 		else
@@ -206,7 +196,7 @@ ft="$wb/../extern/ppsspp/pspautotests/tests/font/fontlist.prx"
 if [ -f "$ft" ]; then
 	rom="$ft"
 	cp "$wb/../extern/ppsspp/assets/flash0/font/ltn0.pgf" "$work/zh_gb.pgf"
-	settings_config "$work/config.fontbase.ini" '{}'
+	settings_config "$work/settings.fontbase.json" '{}'
 	# sony fonts: the fontSource setting turns every declared font into a
 	# requirement, so the leg provides them all - the bundled files stand in
 	# for dumps (free content), the unshipped zh_gb from the copy above
@@ -221,9 +211,9 @@ for e in cfg.get("firmware", []):
 print(json.dumps(out))
 PYFW
 )"
-	settings_config "$work/config.fontfw.ini" '{"fontSource": "sony"}' "$fwmap"
-	if run_frontend "fontbase" "$work/config.fontbase.ini" 120 \
-		&& run_frontend "fontfw" "$work/config.fontfw.ini" 120; then
+	settings_config "$work/settings.fontfw.json" '{"fontSource": "sony"}' "$fwmap"
+	if run_frontend "fontbase" "$work/settings.fontbase.json" 120 \
+		&& run_frontend "fontfw" "$work/settings.fontfw.json" 120; then
 		h1="$(grep '^ramhash=' "$work/fontbase.meta.txt" | cut -d= -f2)"
 		h2="$(grep '^ramhash=' "$work/fontfw.meta.txt" | cut -d= -f2)"
 		if [ -n "$h1" ] && [ -n "$h2" ] && [ "$h1" != "$h2" ]; then
