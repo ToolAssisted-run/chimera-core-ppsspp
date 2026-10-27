@@ -49,9 +49,8 @@ combination. See [`LICENSE`](LICENSE). Earlier integration attempts this work dr
 Chimera ships no cores and downloads none. Download `ppsspp-<version>.chimeraCore`
 from this repository's
 [Releases](https://github.com/ToolAssisted-run/chimera-core-ppsspp/releases) page,
-or build it, and put it in Chimera's `Cores` folder: the one beside
-`Chimera.exe`, or the folder chosen in File > Core Manager > Change folder...
-File > Core Manager lists it. The same file works on Linux and on Windows.
+or build it, and put it in Chimera's `Cores` folder: the one beside Chimera's program, or the folder chosen in Tools > Core Manager... > Change folder...
+Tools > Core Manager... lists it. The same file works on Linux and on Windows.
 
 ## Building
 

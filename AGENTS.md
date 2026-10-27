@@ -45,8 +45,9 @@ sudo apt-get update
 sudo apt-get install -y --no-install-recommends meson ninja-build build-essential python3
 # for the Vulkan renderer's checks, a Vulkan driver (one that draws on the
 # processor will do; without one those checks say SKIP): libvulkan1 mesa-vulkan-drivers
-# the frontend gate also needs: cmake pkg-config mono-complete xvfb
-#   libgl1-mesa-dev libx11-dev libxext-dev libasound2-dev, and the .NET SDK 8.0
+# the frontend gate also needs: cmake pkg-config
+#   libgl1-mesa-dev libx11-dev libxext-dev libasound2-dev, and Chimera's
+#   window built with Qt 6.12 (Chimera's tools/ci-chimera.sh does both)
 
 # in this repository: the PPSSPP submodule and the parts the core uses
 git submodule update --init --depth 1 extern/ppsspp
@@ -89,9 +90,9 @@ and packs it. The gates also need the native reference.
 
 `build-package.sh -r <chimera>` writes `<chimera>/build/Cores/ppsspp.chimeraCore`:
 the cores folder of a Chimera source checkout, so nothing else is needed. For
-a release bundle, copy the file into the `Cores` folder beside `Chimera.exe`
-(or the folder chosen in File > Core Manager > Change folder...). Chimera
-downloads nothing; File > Core Manager lists the folder, Refresh List rescans.
+a release bundle, copy the file into the `cores` folder beside Chimera's program
+(or the folder chosen in Tools > Core Manager... > Change folder...). Chimera
+downloads nothing; Tools > Core Manager... lists the folder, Refresh List rescans.
 A hand build stamps `<commit>+local` (usually `-dirty` too): testing only.
 
 ## Test before you commit

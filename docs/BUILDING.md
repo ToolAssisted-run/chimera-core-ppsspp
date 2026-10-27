@@ -39,17 +39,14 @@ The `frontend-gate` job, which also builds Chimera, installs:
 ```sh
 sudo apt-get install -y --no-install-recommends \
   meson ninja-build build-essential cmake pkg-config python3 \
-  mono-complete xvfb \
   libgl1-mesa-dev libx11-dev libxext-dev libasound2-dev
 ```
 
 The workflow pins no compiler version: the default `gcc` and `g++` are used.
 
-.NET: the `frontend-gate` job uses `actions/setup-dotnet@v4` with
-`dotnet-version: '8.0'`. By hand, install the .NET SDK 8.0. Chimera's README
-gives the command it expects:
-`curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 8.0`.
-.NET, Mono and Xvfb are needed only for the frontend gate.
+Chimera's window needs Qt 6.12 as well, for the frontend gate only.
+Chimera's `tools/ci-chimera.sh` installs it (from Qt's own archives, with
+aqt) and builds Chimera; the workflow keeps Qt in `~/qt` between runs.
 
 Built from source by the build itself, never taken from the system:
 
@@ -233,9 +230,9 @@ gets into Chimera because somebody puts the file in its `Cores` folder.
 - In a Chimera source checkout the cores folder is `<chimera>/build/Cores/`,
   and `build-package.sh -r <chimera>` has already written the package there.
 - In a release bundle, copy `ppsspp.chimeraCore` into the `Cores` folder
-  beside `Chimera.exe`, or into the folder chosen in File > Core Manager >
+  beside Chimera's program, or into the folder chosen in Tools > Core Manager... >
   Change folder... The same file works on Linux and on Windows.
-- File > Core Manager lists what is in the folder. Refresh List rescans it.
+- Tools > Core Manager... lists what is in the folder. Refresh List rescans it.
 
 Published builds are on this repository's Releases page: a rolling `dev`
 release on every green push to `main`, and a dated `nightly-YYYY-MM-DD` release
@@ -303,14 +300,11 @@ default.
 
 ### The frontend gate
 
-Runs the package inside Chimera, headless under Mono on a private Xvfb
-display. Chimera must be built first. From `<chimera>`:
+Runs the package inside Chimera's window, run headless: it needs no
+display. Chimera must be built first, with its window. From `<chimera>`:
 
 ```sh
-meson setup build/meson-linux --prefix "$PWD/build" --libdir dll
-meson compile -C build/meson-linux
-meson install -C build/meson-linux
-dotnet build source/gui/Chimera.sln -c Release /nodeReuse:false -p:UseSharedCompilation=false
+"$chimera"/tools/ci-chimera.sh
 ```
 
 Then, from `<core>`, with the package installed and the native reference
@@ -324,7 +318,7 @@ built:
 run-frontend.sh [--chimera-root <path>] [--frames N] [file...]
 ```
 
-It needs `<chimera>/build/Chimera.exe`,
+It needs `<chimera>/build/meson-linux/source/ui/chimera`,
 `<chimera>/build/Cores/ppsspp.chimeraCore` and
 `build/meson-native/run-native`. The frame count defaults to 120 and the
 default program is pspautotests' `triangle.prx`. It ends with
@@ -334,7 +328,8 @@ default program is pspautotests' `triangle.prx`. It ends with
   reference's, byte for byte.
 - `<name>:settings:model` - a machine-shaping setting reaches the guest:
   `pspModel=psp-1000` boots a 32 MB machine.
-- `<name>:keybinds` - the package's default bindings became the frontend's.
+- `<name>:keybinds` - the bindings the machine has, with no key changed, are
+  the package's default ones.
 - `fontlist:firmware` - a font given through the frontend's firmware store
   reaches the guest.
 - `savedata:engine` - the save data exported through the engine
@@ -384,5 +379,3 @@ Project files, declared in `waterbox/file_slots.json`:
   `pspautotests` submodule is not initialised, or a pin bump moved a path.
 - The frontend gate says `native reference not built`: build
   `build/meson-native` first; the gate compares against `run-native`.
-- `Xvfb not found`: install `xvfb`. The frontend gate starts its own display
-  when `DISPLAY` is not set.
