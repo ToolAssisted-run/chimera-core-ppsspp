@@ -299,7 +299,7 @@ json.dump({
     "files": [{"name": "triangle.prx", "sha1": sha, "slot": "disc"}],
     "settings": {}, "firmware": [], "coreCache": [],
     "headers": {"MovieVersion": "Chimera Project File v1.1", "Platform": "PSP"},
-    "input": "[Input]\nLogKey:#" + keys + "\n" + "||    0,    0,............|\n" * 60 + "[/Input]\n",
+    "inputs": {"columns": [keys.split("|")[:-1]], "entries": ["||    0,    0,............|"] * 60},
     "markers": [], "branches": [],
 }, open(d + "/p.chimeraProject", "w"), indent=1)
 PY
