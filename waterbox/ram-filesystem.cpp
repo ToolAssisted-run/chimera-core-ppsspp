@@ -22,6 +22,12 @@
 
 #include "ram-filesystem.h"
 
+/* Why a thing failed is a key of languages/en.json, put inside the caller's
+ * text, each of its arguments after a TEXT_INNER (chimera
+ * docs/translations.md). TEXT_INNER is a string of its own so the byte after
+ * it is never read as more of its hex. */
+#define TEXT_INNER "\x1e"
+
 namespace {
 
 // A fixed FAT-ish timestamp: 2017-05-27 12:44:28 UTC, the sandbox epoch.
@@ -518,7 +524,7 @@ bool Chimera_MemstickSeedZip(const uint8_t *data, size_t len, const char *under,
 	zip_source_t *src = zip_source_buffer_create(data, len, 0, &zerr);
 	zip_t *z = src ? zip_open_from_source(src, ZIP_RDONLY, &zerr) : nullptr;
 	if (!z) {
-		*err = std::string("it is not a zip (") + zip_error_strerror(&zerr) + ")";
+		*err = std::string("error.zip_not_zip" TEXT_INNER) + zip_error_strerror(&zerr);
 		if (src)
 			zip_source_free(src);
 		zip_error_fini(&zerr);
@@ -531,7 +537,7 @@ bool Chimera_MemstickSeedZip(const uint8_t *data, size_t len, const char *under,
 	for (zip_int64_t i = 0; i < count && ok; i++) {
 		zip_stat_t st;
 		if (zip_stat_index(z, (zip_uint64_t)i, 0, &st) != 0 || !(st.valid & ZIP_STAT_NAME)) {
-			*err = "an entry of it could not be read";
+			*err = "error.zip_entry";
 			ok = false;
 			break;
 		}
@@ -540,7 +546,7 @@ bool Chimera_MemstickSeedZip(const uint8_t *data, size_t len, const char *under,
 		if (name.empty() || name.back() == '/')
 			continue;  // a directory entry: the files under it make it
 		if (name.front() == '/' || name.find("..") != std::string::npos || name.find(':') != std::string::npos) {
-			*err = "it holds '" + std::string(st.name) + "', which is outside the memory stick";
+			*err = std::string("error.zip_outside" TEXT_INNER) + std::string(st.name);
 			ok = false;
 			break;
 		}
@@ -552,7 +558,7 @@ bool Chimera_MemstickSeedZip(const uint8_t *data, size_t len, const char *under,
 		if (zf)
 			zip_fclose(zf);
 		if (got != (zip_int64_t)st.size) {
-			*err = "its '" + std::string(st.name) + "' could not be unpacked";
+			*err = std::string("error.zip_not_unpacked" TEXT_INNER) + std::string(st.name);
 			ok = false;
 			break;
 		}
@@ -561,7 +567,7 @@ bool Chimera_MemstickSeedZip(const uint8_t *data, size_t len, const char *under,
 	}
 	zip_close(z);
 	if (ok && *files == 0) {
-		*err = "it holds no file";
+		*err = "error.zip_empty";
 		ok = false;
 	}
 	return ok;

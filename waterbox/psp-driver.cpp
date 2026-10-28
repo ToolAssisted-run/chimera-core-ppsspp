@@ -48,6 +48,11 @@
 #include "GPU/GPUCommon.h"
 #include "GPU/Common/GPUDebugInterface.h"
 
+/* A text a person reads is a key of languages/en.json, each of its
+ * arguments after a TEXT_ARG (chimera docs/translations.md). TEXT_ARG is a
+ * string of its own so the byte after it is never read as more of its hex. */
+#define TEXT_ARG "\x1f"
+
 // ---------------------------------------------------------------------------
 // Driver state
 // ---------------------------------------------------------------------------
@@ -581,8 +586,7 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 #ifdef CHIMERA_GUEST_VK
 		if (!chimera_psp_vulkan_bridge_present()) {
 			if (error)
-				*error = "the renderer setting is vulkan-hw, and no Vulkan was handed over (this computer may "
-				         "have no Vulkan driver, or this Chimera is older than its Vulkan bridge).";
+				*error = "error.no_vulkan_bridge";
 			return false;
 		}
 		g_Config.bSoftwareRendering = false;
@@ -594,14 +598,14 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 		g_vulkan = new VulkanGraphicsContext();
 		if (!StartVulkan(&message)) {
 			if (error)
-				*error = "the Vulkan renderer could not start: " + message;
+				*error = std::string("error.vulkan_not_started" TEXT_ARG) + message;
 			return false;
 		}
 		graphics = g_vulkan;
 		g_onVulkan = true;
 #else
 		if (error)
-			*error = "the renderer setting is vulkan-hw, and this build has no Vulkan renderer.";
+			*error = "error.no_vulkan_build";
 		return false;
 #endif
 	}
@@ -637,7 +641,7 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 
 	if (!PSP_InitStart(coreParameter)) {
 		if (error)
-			*error = "PSP_InitStart failed";
+			*error = "error.not_started";
 		return false;
 	}
 	std::string error_string;
@@ -647,7 +651,7 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	}
 	if (state != BootState::Complete) {
 		if (error)
-			*error = error_string.empty() ? "boot failed" : error_string;
+			*error = error_string.empty() ? std::string("error.not_booted") : error_string;
 		PSP_Shutdown(false);
 		return false;
 	}

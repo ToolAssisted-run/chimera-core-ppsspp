@@ -214,7 +214,7 @@ EOF
 	refused=""
 	for z in evil notzip; do
 		timeout 300 "$natdir/run-wbx" "$gstdir/core.wbx" "$il" 1 --settings "$irset" --firmware "slots=$sdir/slots1.json" --firmware "SAVE.ZIP=$sdir/$z.zip" 2>&1 |
-			grep -q "Init failed: the save data SAVE.ZIP cannot go on the memory stick: it \(holds '../escape.bin', which is outside the memory stick\|is not a zip\)" && refused="$refused $z"
+			grep -q "Init failed: error.save_refused[^a-z]SAVE.ZIP[^a-z]error.zip_\(outside[^a-z]../escape.bin\|not_zip\)" && refused="$refused $z"
 	done
 	if [ "$seen" != 2 ] || [ "$unseen" != 0 ]; then
 		echo "FAIL seed (idlist.prx found $seen of the 2 seeded saves; $unseen without them)"; fail=1
@@ -372,7 +372,7 @@ if [ ! -f "$vktri" ] || [ ! -f "$vkother" ]; then
 else
 	vkrun v60 vk "$vktri" 60 --screenshot "$vkwork/vk.tga"
 	vk_card="$(grep -o 'vulkan bridge: .*(Vulkan [^)]*)' "$vkwork/v60.err" | head -1 | cut -c16-)"
-	if grep -q 'no Vulkan was handed over' "$vkwork/v60.err"; then
+	if grep -q 'error.no_vulkan_bridge' "$vkwork/v60.err"; then
 		echo "SKIP vk (this computer handed the core no Vulkan: $(grep -m1 '^vulkan bridge:' "$vkwork/v60.err" | cut -c1-100) - would prove PPSSPP's Vulkan renderer draws, and comes through a state load)"
 	else
 		vkrun s60 sw "$vktri" 60 --screenshot "$vkwork/sw.tga"

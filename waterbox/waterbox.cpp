@@ -25,6 +25,11 @@
 
 #include "Core/HLE/sceCtrl.h"
 
+/* A text a person reads is a key of languages/en.json, each of its
+ * arguments after a TEXT_ARG (chimera docs/translations.md). TEXT_ARG is a
+ * string of its own so the byte after it is never read as more of its hex. */
+#define TEXT_ARG "\x1f"
+
 static char g_loadError[512];
 static bool g_inited;
 
@@ -145,9 +150,9 @@ ECL_EXPORT int Init(void)
 	// savestate carries only what the game writes afterwards. Each file is
 	// opened once (the VFS contract) and read whole.
 	{
-		static const struct { const char *slot, *under, *what; } kSeeds[] = {
-			{ "savedata", "PSP/SAVEDATA/", "save data" },
-			{ "dlc", "PSP/GAME/", "DLC" },
+		static const struct { const char *slot, *under, *missing, *refused; } kSeeds[] = {
+			{ "savedata", "PSP/SAVEDATA/", "error.save_missing", "error.save_refused" },
+			{ "dlc", "PSP/GAME/", "error.dlc_missing", "error.dlc_refused" },
 		};
 		for (const auto &seed : kSeeds) {
 			for (int i = 0; i < wbx_slot_count(seed.slot); i++) {
@@ -162,15 +167,14 @@ ECL_EXPORT int Init(void)
 						bytes.insert(bytes.end(), chunk, chunk + n);
 					fclose(f);
 				} else {
-					snprintf(g_loadError, sizeof g_loadError, "the %s %s is not there", seed.what, name);
+					snprintf(g_loadError, sizeof g_loadError, "%s" TEXT_ARG "%s", seed.missing, name);
 					return 0;
 				}
 				int files = 0;
 				std::string why;
 				if (!Chimera_MemstickSeedZip(bytes.data(), bytes.size(), seed.under, &files, &why)) {
-					snprintf(g_loadError, sizeof g_loadError,
-						"the %s %s cannot go on the memory stick: %s (a zip of the memory stick, as Export Save Data writes it, "
-						"or of the folders to put under %s)", seed.what, name, why.c_str(), seed.under);
+					snprintf(g_loadError, sizeof g_loadError, "%s" TEXT_ARG "%s" TEXT_ARG "%s" TEXT_ARG "%s", seed.refused, name,
+						why.c_str(), seed.under);
 					return 0;
 				}
 			}

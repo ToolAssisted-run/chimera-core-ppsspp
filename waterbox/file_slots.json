@@ -3,27 +3,27 @@
   "slots": [
     {
       "id": "disc",
-      "title": "UMD disc",
+      "title": "slot.disc",
       "min": 1,
       "max": 1,
       "formats": ["iso", "cso", "pbp", "prx", "elf"],
-      "help": "The PSP game. It can be a UMD dump (.iso, or compressed .cso) or homebrew (an EBOOT .pbp, or a plain .prx or .elf)."
+      "help": "slot.disc.help"
     },
     {
       "id": "savedata",
-      "title": "Save data",
+      "title": "slot.savedata",
       "min": 0,
       "max": 1,
       "formats": ["zip"],
-      "help": "What is already saved on the memory stick when the PSP starts. It is either the zip that Emulator > Export Save Data... writes, used as it is, or a zip of save folders copied from a memory stick (for example ULUS10041DATA00, with its PARAM.SFO, icons and the game's files), which are put under PSP/SAVEDATA. The zip is unpacked onto the memory stick before the machine starts. The file is never changed. The project and the movie record exactly which file it was, so a run that starts from a saved game can be played back by anyone who has the same file. Leave this empty and the memory stick has no saves."
+      "help": "slot.savedata.help"
     },
     {
       "id": "dlc",
-      "title": "DLC",
+      "title": "slot.dlc",
       "min": 0,
       "max": -1,
       "formats": ["zip"],
-      "help": "Downloadable content. It is either a zip of the game's DLC folder as it is on a memory stick (for example ULUS10336, with the EDAT files and PARAM.PBP inside), which is put under PSP/GAME, or a zip of a whole memory stick, whose PSP/ folders are put where they belong. It is unpacked onto the memory stick before the machine starts, and its hash is recorded like the save data's. Several zips can be given."
+      "help": "slot.dlc.help"
     }
   ]
 }
