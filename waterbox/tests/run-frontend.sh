@@ -289,19 +289,23 @@ else
 	rm -rf "$work/project"; mkdir -p "$work/project"
 	cp "$pj" "$work/project/triangle.prx"
 	python3 - "$work/project" <<'PY'
-import hashlib, json, sys
+import hashlib, json, sys, zipfile
 d = sys.argv[1]
 sha = hashlib.sha1(open(d + "/triangle.prx", "rb").read()).hexdigest().upper()
 keys = "P1 Stick X|P1 Stick Y|P1 Up|P1 Down|P1 Left|P1 Right|P1 Cross|P1 Circle|P1 Square|P1 Triangle|P1 Start|P1 Select|P1 L|P1 R|"
-json.dump({
-    "title": "project boot", "description": "", "rerecords": 0,
+project = {
+    "title": "project boot", "rerecords": 0,
     "core": {"name": "PPSSPP", "version": "", "sha1": ""},
     "files": [{"name": "triangle.prx", "sha1": sha, "slot": "disc"}],
     "settings": {}, "firmware": [], "coreCache": [],
     "headers": {"MovieVersion": "Chimera Project File v1.1", "Platform": "PSP"},
-    "inputs": {"columns": [keys.split("|")[:-1]], "entries": ["||    0,    0,............|"] * 60},
+    "inputs": {"columns": [keys.split("|")[:-1]]},
     "markers": [], "branches": [],
-}, open(d + "/p.chimeraProject", "w"), indent=1)
+}
+# a project is a zip (Chimera's since 2026-11-02): project.json and the input's lines
+with zipfile.ZipFile(d + "/p.chimeraProject", "w", zipfile.ZIP_DEFLATED) as z:
+    z.writestr("project.json", json.dumps(project, indent=1))
+    z.writestr("input.input", "||    0,    0,............|\n" * 60)
 PY
 	( cd "$chimera_root" && LD_LIBRARY_PATH="$chimera_root/build/dll" timeout 600 "$crun" \
 		--project "$work/project/p.chimeraProject" "$package" --files "$work/project" --allow-core-mismatch ) \
