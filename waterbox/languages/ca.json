@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 oficial",
+		"error.cheats_missing": "El fitxer de trucs %1 no hi és.",
 		"error.dlc_missing": "No hi és el DLC %1.",
 		"error.dlc_refused": "El DLC %1 no es pot posar a la Memory Stick: %2. Ha de ser un zip de la Memory Stick, tal com el escriu Emulador > Exporta les dades de desat, o de les carpetes que s'han de posar sota %3.",
 		"error.no_vulkan_bridge": "El paràmetre de renderitzador és vulkan-hw, i no s'ha entregat cap Vulkan (potser aquest ordinador no té cap controlador de Vulkan, o aquest Chimera és més antic que el seu pont de Vulkan).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "El paràmetre de format d'hora de la consola, que els jocs llegeixen per mostrar hores.",
 		"setting.timezone": "Fus horari (minuts)",
 		"setting.timezone.about": "El fus horari de la consola com a diferència respecte de l'UTC en minuts (de -720 a 840). Els jocs el llegeixen juntament amb el rellotge.",
+		"slot.cheats": "Trucs",
+		"slot.cheats.help": "Codis de trucs en el format CWCheat de PPSSPP: el fitxer .ini d'un joc o un cheat.db que en conté molts. Només s'executen els codis del joc que s'està jugant que estan activats. La línia d'un codi comença amb _C1 quan està activat i amb _C0 quan no ho està, així que canvieu _C0 per _C1 als codis que vulgueu. Els codis s'executen tota l'estona, i una pel·lícula feta amb ells necessita el mateix fitxer per reproduir-se igual; el projecte anota quin fitxer era. Deixeu-ho buit per no fer servir trucs.",
 		"slot.disc": "Disc UMD",
 		"slot.disc.help": "El joc del PSP. Pot ser un volcat UMD (.iso, o .cso comprimit) o un programa fet a casa (un EBOOT .pbp, o un .prx o .elf simple).",
 		"slot.dlc": "DLC",

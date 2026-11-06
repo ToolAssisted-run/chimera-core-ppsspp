@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 oficial",
+		"error.cheats_missing": "O arquivo de trapaças %1 não está lá.",
 		"error.dlc_missing": "O DLC %1 não está ali.",
 		"error.dlc_refused": "O DLC %1 não pode ir para o cartão de memória: %2. Precisa ser um zip do cartão de memória, como Exportar dados salvos o grava, ou das pastas a colocar em %3.",
 		"error.no_vulkan_bridge": "A configuração de renderizador é vulkan-hw, e nenhum Vulkan foi entregue (este computador pode não ter driver de Vulkan, ou este Chimera é mais antigo que a sua ponte Vulkan).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "A configuração de formato de hora do console, que os jogos leem para mostrar horas.",
 		"setting.timezone": "Fuso horário (minutos)",
 		"setting.timezone.about": "O fuso horário do console como diferença em relação ao UTC, em minutos (-720 a 840). Os jogos o leem junto com o relógio.",
+		"slot.cheats": "Trapaças",
+		"slot.cheats.help": "Códigos de trapaça no formato CWCheat do PPSSPP: o .ini de um jogo ou um cheat.db com muitos jogos. Só rodam os códigos ligados do jogo que está sendo jogado. A linha de um código começa com _C1 quando está ligado e com _C0 quando está desligado, então troque _C0 por _C1 nos códigos que quiser. Os códigos rodam o tempo todo, e um filme feito com eles precisa do mesmo arquivo para ser reproduzido igual; o projeto registra qual arquivo era. Deixe vazio para não usar trapaças.",
 		"slot.disc": "Disco UMD",
 		"slot.disc.help": "O jogo do PSP. Pode ser uma cópia UMD (.iso, ou .cso comprimido) ou um programa caseiro (um EBOOT .pbp, ou um .prx ou .elf simples).",
 		"slot.dlc": "DLC",

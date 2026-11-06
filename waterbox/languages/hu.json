@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 hivatalos",
+		"error.cheats_missing": "A(z) %1 csalásfájl nincs meg.",
 		"error.dlc_missing": "A(z) %1 letölthető tartalom nincs meg.",
 		"error.dlc_refused": "A(z) %1 letölthető tartalom nem kerülhet a memóriakártyára: %2. A memóriakártya tartalmának zip-fájlja kell legyen, ahogy az Exportálás írja, vagy a(z) %3 alá kerülő mappák zip-fájlja.",
 		"error.no_vulkan_bridge": "A renderer beállítása vulkan-hw, de nem kapott Vulkan-eszközt (lehet, hogy ezen a számítógépen nincs Vulkan-illesztőprogram, vagy ez a Chimera régebbi, mint a Vulkan-átadó része).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "A konzol időformátum-beállítása, amelyet a játékok az idő megjelenítéséhez olvasnak.",
 		"setting.timezone": "Időzóna (perc)",
 		"setting.timezone.about": "A konzol időzónája az UTC-től mért eltérésként, percben (-720 és 840 között). A játékok az órával együtt olvassák.",
+		"slot.cheats": "Csalások",
+		"slot.cheats.help": "Csalókódok a PPSSPP CWCheat formátumában: egy játék .ini fájlja, vagy egy sok játékot tartalmazó cheat.db. Csak a játszott játék bekapcsolt kódjai futnak. Egy kód sora _C1-gyel kezdődik, ha be van kapcsolva, és _C0-val, ha ki, ezért a kívánt kódoknál írja át a _C0-t _C1-re. A kódok folyamatosan futnak, és a velük készült film ugyanazt a fájlt igényli, hogy ugyanúgy játszódjon le; a projekt rögzíti, melyik fájl volt az. Hagyja üresen, ha nem kér csalásokat.",
 		"slot.disc": "UMD-lemez",
 		"slot.disc.help": "A PSP-játék. Lehet UMD-másolat (.iso, vagy tömörített .cso), illetve házi program (EBOOT .pbp, vagy sima .prx vagy .elf).",
 		"slot.dlc": "Letölthető tartalom (DLC)",

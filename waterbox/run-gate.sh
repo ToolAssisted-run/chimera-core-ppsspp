@@ -232,6 +232,39 @@ else
 	echo "SKIP seed (no $il - would prove a project's save data and DLC reach the memory stick)"
 fi
 
+# ---- the cheats leg (chimera#532) ------------------------------------------
+# A project's cheats file (the "cheats" slot, one CWCheat .ini or cheat.db) is
+# read once at the start and handed to PPSSPP, which runs the running game's
+# codes marked _C1 on its own timer in emulated time. One code on writes a word
+# into RAM, one off would write another: after 60 frames the RAM holds the
+# first and not the second, with the file and only with it, the same when the
+# machine is saved and loaded around every frame.
+if [ -f "$il" ]; then
+	cdir="$(mktemp -d)"
+	printf '_S TEST00000\n_G Chimera cheats test\n_C1 On\n_L 0x21000000 0x12345678\n_C0 Off\n_L 0x21000004 0x0BADF00D\n' > "$cdir/test.ini"
+	printf '{"cheats":["TEST.INI"]}' > "$cdir/slots.json"
+	cmounts="--firmware slots=$cdir/slots.json --firmware TEST.INI=$cdir/test.ini"
+	timeout 600 "$natdir/run-wbx" "$gstdir/core.wbx" "$il" 60 --axes-via-export --settings "$irset" $cmounts --ram-out "$cdir/on.bin" >/dev/null 2>&1
+	timeout 900 "$natdir/run-wbx" "$gstdir/core.wbx" "$il" 60 --rerecord --axes-via-export --settings "$irset" $cmounts --ram-out "$cdir/rr.bin" >/dev/null 2>&1
+	timeout 600 "$natdir/run-wbx" "$gstdir/core.wbx" "$il" 60 --axes-via-export --settings "$irset" --ram-out "$cdir/off.bin" >/dev/null 2>&1
+	# RAM starts at 0x08000000 and a code's 0x2 address at 0x08800000
+	word() { od -An -tx4 -j $((0x1800000 + $2)) -N4 "$1" 2>/dev/null | tr -d ' '; }
+	on="$(word "$cdir/on.bin" 0) $(word "$cdir/on.bin" 4)"
+	off="$(word "$cdir/off.bin" 0) $(word "$cdir/off.bin" 4)"
+	if [ "$on" != "12345678 00000000" ]; then
+		echo "FAIL cheats (with the file RAM holds [$on], not the code that is on and nothing of the one that is off)"; fail=1
+	elif [ "$off" != "00000000 00000000" ]; then
+		echo "FAIL cheats (without the file RAM holds [$off])"; fail=1
+	elif ! cmp -s "$cdir/on.bin" "$cdir/rr.bin"; then
+		echo "FAIL cheats (the RAM differs when the machine is saved and loaded around every frame)"; fail=1
+	else
+		echo "PASS cheats (the code marked on writes its word, the one marked off does not, nothing without the file; the same RAM across a savestate around every frame)"
+	fi
+	rm -rf "$cdir"
+else
+	echo "SKIP cheats (no $il - would prove a project's cheats run)"
+fi
+
 # ---- a file written in pieces (chimera#212) --------------------------------
 # A truncating open erases nothing on a PSP: the file ends where that handle
 # last wrote, once it is closed, and what was there before can be had back by

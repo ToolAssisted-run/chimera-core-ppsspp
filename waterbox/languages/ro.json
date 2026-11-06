@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 oficial",
+		"error.cheats_missing": "Fișierul de coduri %1 nu există.",
 		"error.dlc_missing": "Conținutul descărcabil %1 nu este acolo.",
 		"error.dlc_refused": "Conținutul descărcabil %1 nu poate merge pe cardul de memorie: %2. Trebuie să fie un zip al cardului de memorie, cum îl scrie Exportă datele salvate, sau al dosarelor care se pun sub %3.",
 		"error.no_vulkan_bridge": "Setarea motorului de randare este vulkan-hw, dar nu a fost predat niciun Vulkan (acest calculator poate să nu aibă driver Vulkan, sau acest Chimera este mai vechi decât puntea sa Vulkan).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "Setarea de format al orei din consolă, pe care o citesc jocurile ca să afișeze orele.",
 		"setting.timezone": "Fus orar (minute)",
 		"setting.timezone.about": "Fusul orar al consolei, ca diferență față de UTC, în minute (-720 până la 840). Jocurile îl citesc împreună cu ceasul.",
+		"slot.cheats": "Coduri",
+		"slot.cheats.help": "Coduri de trișat în formatul CWCheat al PPSSPP: fișierul .ini al unui joc sau un cheat.db cu multe jocuri. Rulează doar codurile pornite pentru jocul care se joacă. Linia unui cod începe cu _C1 când este pornit și cu _C0 când este oprit, deci schimbați _C0 în _C1 la codurile dorite. Codurile rulează tot timpul, iar un film făcut cu ele are nevoie de același fișier ca să se redea la fel; proiectul notează ce fișier a fost. Lăsați gol pentru niciun cod.",
 		"slot.disc": "Disc UMD",
 		"slot.disc.help": "Jocul PSP. Poate fi o copie UMD (.iso, sau .cso comprimat) ori homebrew (un EBOOT .pbp, sau un .prx ori .elf simplu).",
 		"slot.dlc": "Conținut descărcabil (DLC)",

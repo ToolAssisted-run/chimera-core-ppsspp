@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 officiel",
+		"error.cheats_missing": "Filen med snydekoder %1 findes ikke.",
 		"error.dlc_missing": "DLC'en %1 findes ikke.",
 		"error.dlc_refused": "DLC'en %1 kan ikke lægges på memory stick'en: %2. Det skal være en zip af memory stick'en, som Export Save Data skriver den, eller af mapperne, der skal lægges under %3.",
 		"error.no_vulkan_bridge": "Renderer-indstillingen er vulkan-hw, og der blev ikke givet noget Vulkan videre (denne computer har måske ingen Vulkan-driver, eller denne Chimera er ældre end sin Vulkan-bro).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "Konsollens indstilling for tidsformat, som spil læser for at vise klokkeslæt.",
 		"setting.timezone": "Tidszone (minutter)",
 		"setting.timezone.about": "Konsollens tidszone som forskel fra UTC i minutter (-720 til 840). Spil læser den sammen med uret.",
+		"slot.cheats": "Snydekoder",
+		"slot.cheats.help": "Snydekoder i PPSSPP's CWCheat-format: et spils .ini eller en cheat.db med mange spil. Kun de koder til det spil, der spilles, som er slået til, køres. En kodes linje begynder med _C1, når den er slået til, og _C0, når den er slået fra, så skift _C0 til _C1 for de koder, du vil have. Koderne kører hele tiden, og en film lavet med dem skal have den samme fil for at blive afspillet ens; projektet noterer, hvilken fil det var. Lad feltet stå tomt for ingen snydekoder.",
 		"slot.disc": "UMD-disk",
 		"slot.disc.help": "PSP-spillet. Det kan være et UMD-dump (.iso, eller komprimeret .cso) eller hjemmelavet (en EBOOT .pbp, eller en almindelig .prx eller .elf).",
 		"slot.dlc": "DLC",

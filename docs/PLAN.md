@@ -627,3 +627,29 @@ Not measured: a game played with input on the card, any card other than this
 one, and the frontend's window (only its command-line runner). Not offered:
 a resolution above the PSP's own. The `vk:` checks in the test script run on
 lavapipe, which is not a graphics card.
+
+## Cheats in a project (chimera#532, 2026-11-06; user-decided)
+
+A user asked for PPSSPP's cheat codes: 60 fps patches, and workarounds such
+as the one that unlocks Resistance: Retribution's Infected mode without a
+PS3. PPSSPP runs CWCheat codes itself. The owner chose a cheats file in the
+project rather than a window that lists the codes.
+
+- A project gets a "Cheats" slot: one `.ini` (a game's) or `.db` (a
+  `cheat.db` of many games). The core reads it once at the start and turns
+  PPSSPP's cheats on only when there is one.
+- PPSSPP keeps the sections for the running game (its `_S` lines) and runs
+  the codes marked `_C1`. A `cheat.db` marks its codes `_C0` (off): the slot's
+  help says to change `_C0` to `_C1` for the codes wanted.
+- PPSSPP reads a cheat file through the computer's files, and the sandbox has
+  no folder to write one to. Patch 0005 hands the parser the file's bytes
+  instead (`fmemopen`), and makes no file on the memory stick's side.
+- The codes run on PPSSPP's own timer in emulated time (every 77 emulated
+  milliseconds), so a movie replays the same with the same file, which the
+  project pins.
+
+Tested: the core's test script, all of it (every leg passes; lbp skipped,
+no image here), whose new cheats leg the core from before this change fails,
+and Chimera's package contract tests (0 failed). Not tested: any commercial
+game's codes.
+

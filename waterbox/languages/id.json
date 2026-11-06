@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 resmi",
+		"error.cheats_missing": "Berkas cheat %1 tidak ada.",
 		"error.dlc_missing": "DLC %1 tidak ada.",
 		"error.dlc_refused": "DLC %1 tidak dapat masuk ke memory stick: %2. Harus berupa zip dari memory stick, seperti yang ditulis Export Save Data, atau zip dari folder yang akan ditaruh di bawah %3.",
 		"error.no_vulkan_bridge": "Pengaturan renderer adalah vulkan-hw, dan tidak ada Vulkan yang diserahkan (komputer ini mungkin tidak punya driver Vulkan, atau Chimera ini lebih lama daripada jembatan Vulkan-nya).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "Pengaturan format waktu konsol, yang dibaca game untuk menampilkan jam.",
 		"setting.timezone": "Zona waktu (menit)",
 		"setting.timezone.about": "Zona waktu konsol sebagai selisih dari UTC dalam menit (-720 sampai 840). Game membacanya bersama jam.",
+		"slot.cheats": "Cheat",
+		"slot.cheats.help": "Kode cheat dalam format CWCheat milik PPSSPP: berkas .ini sebuah game, atau cheat.db yang berisi banyak game. Hanya kode untuk game yang sedang dimainkan yang dinyalakan yang dijalankan. Baris sebuah kode diawali _C1 jika menyala dan _C0 jika mati, jadi ubah _C0 menjadi _C1 untuk kode yang Anda inginkan. Kode berjalan terus-menerus, dan film yang dibuat dengannya memerlukan berkas yang sama agar diputar ulang dengan sama; proyek mencatat berkas mana itu. Kosongkan jika tidak memakai cheat.",
 		"slot.disc": "Disc UMD",
 		"slot.disc.help": "Game PSP. Bisa berupa salinan UMD (.iso, atau .cso yang dikompresi) atau homebrew (EBOOT .pbp, atau .prx atau .elf biasa).",
 		"slot.dlc": "DLC",

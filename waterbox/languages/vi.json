@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 chính thức",
+		"error.cheats_missing": "Không có tệp mã gian lận %1.",
 		"error.dlc_missing": "Không có DLC %1.",
 		"error.dlc_refused": "DLC %1 không thể đặt vào thẻ nhớ: %2. Nó phải là một tệp zip của thẻ nhớ, như Export Save Data ghi ra, hoặc của các thư mục sẽ đặt dưới %3.",
 		"error.no_vulkan_bridge": "Cài đặt renderer là vulkan-hw, nhưng không có Vulkan nào được chuyển sang (máy tính này có thể không có driver Vulkan, hoặc Chimera này cũ hơn cầu nối Vulkan của nó).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "Cài đặt định dạng giờ của console, mà trò chơi đọc để hiển thị giờ.",
 		"setting.timezone": "Múi giờ (phút)",
 		"setting.timezone.about": "Múi giờ của console, tính là chênh lệch so với UTC theo phút (-720 đến 840). Trò chơi đọc nó cùng với đồng hồ.",
+		"slot.cheats": "Mã gian lận",
+		"slot.cheats.help": "Mã gian lận theo định dạng CWCheat của PPSSPP: tệp .ini của một trò chơi, hoặc một cheat.db chứa nhiều trò chơi. Chỉ những mã đang bật của trò chơi đang chơi mới chạy. Dòng của một mã bắt đầu bằng _C1 khi bật và _C0 khi tắt, nên hãy đổi _C0 thành _C1 cho các mã bạn muốn. Các mã chạy liên tục, và một phim làm với chúng cần đúng tệp đó để phát lại giống hệt; dự án ghi lại đó là tệp nào. Để trống nếu không dùng mã gian lận.",
 		"slot.disc": "Đĩa UMD",
 		"slot.disc.help": "Trò chơi PSP. Đây có thể là bản chép UMD (.iso, hoặc .cso đã nén) hoặc chương trình tự làm (EBOOT .pbp, hoặc .prx hay .elf thông thường).",
 		"slot.dlc": "DLC",

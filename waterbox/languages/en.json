@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 official",
+		"error.cheats_missing": "The cheats file %1 is not there.",
 		"error.dlc_missing": "The DLC %1 is not there.",
 		"error.dlc_refused": "The DLC %1 cannot go on the memory stick: %2. It has to be a zip of the memory stick, as Export Save Data writes it, or of the folders to put under %3.",
 		"error.no_vulkan_bridge": "The renderer setting is vulkan-hw, and no Vulkan was handed over (this computer may have no Vulkan driver, or this Chimera is older than its Vulkan bridge).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "The console's time format setting, which games read to show times.",
 		"setting.timezone": "Time Zone (minutes)",
 		"setting.timezone.about": "The console's time zone as a difference from UTC in minutes (-720 to 840). Games read it together with the clock.",
+		"slot.cheats": "Cheats",
+		"slot.cheats.help": "Cheat codes in PPSSPP's CWCheat format: a game's .ini, or a cheat.db that holds many games. Only the codes for the game being played that are switched on run. A code's line starts with _C1 when it is on and _C0 when it is off, so change _C0 to _C1 for the codes you want. The codes run all the time, and a movie made with them needs the same file to play back the same; the project records which file it was. Leave this empty for no cheats.",
 		"slot.disc": "UMD disc",
 		"slot.disc.help": "The PSP game. It can be a UMD dump (.iso, or compressed .cso) or homebrew (an EBOOT .pbp, or a plain .prx or .elf).",
 		"slot.dlc": "DLC",

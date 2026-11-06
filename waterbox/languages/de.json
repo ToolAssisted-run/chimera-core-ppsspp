@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 offiziell",
+		"error.cheats_missing": "Die Cheat-Datei %1 ist nicht vorhanden.",
 		"error.dlc_missing": "Das DLC %1 ist nicht vorhanden.",
 		"error.dlc_refused": "Das DLC %1 kann nicht auf den Memory Stick: %2. Es muss eine ZIP des Memory Sticks sein, so wie Export Save Data sie schreibt, oder der Ordner, die unter %3 gelegt werden sollen.",
 		"error.no_vulkan_bridge": "Die Einstellung Renderer ist vulkan-hw, und es wurde kein Vulkan übergeben (dieser Computer hat womöglich keinen Vulkan-Treiber, oder dieses Chimera ist älter als seine Vulkan-Brücke).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "Die Einstellung des Zeitformats der Konsole, die Spiele lesen, um Uhrzeiten zu zeigen.",
 		"setting.timezone": "Zeitzone (Minuten)",
 		"setting.timezone.about": "Die Zeitzone der Konsole als Abstand zu UTC in Minuten (-720 bis 840). Spiele lesen sie zusammen mit der Uhr.",
+		"slot.cheats": "Cheats",
+		"slot.cheats.help": "Cheat-Codes im CWCheat-Format von PPSSPP: die .ini eines Spiels oder eine cheat.db mit vielen Spielen. Es laufen nur die eingeschalteten Codes für das gespielte Spiel. Die Zeile eines Codes beginnt mit _C1, wenn er an ist, und mit _C0, wenn er aus ist; ändern Sie also _C0 in _C1 für die gewünschten Codes. Die Codes laufen ständig, und ein Film, der mit ihnen aufgenommen wurde, braucht dieselbe Datei, um gleich abzulaufen; das Projekt hält fest, welche Datei es war. Leer lassen für keine Cheats.",
 		"slot.disc": "UMD-Disc",
 		"slot.disc.help": "Das PSP-Spiel. Es kann ein UMD-Abbild (.iso oder komprimiert .cso) oder Homebrew (ein EBOOT .pbp oder eine einfache .prx- oder .elf-Datei) sein.",
 		"slot.dlc": "DLC",

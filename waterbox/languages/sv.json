@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 officiell",
+		"error.cheats_missing": "Fuskfilen %1 finns inte.",
 		"error.dlc_missing": "DLC %1 finns inte.",
 		"error.dlc_refused": "DLC %1 kan inte läggas på minnespinnen: %2. Den måste vara en zip-fil av minnespinnen, så som Export Save Data skriver den, eller av de mappar som ska läggas under %3.",
 		"error.no_vulkan_bridge": "Renderarinställningen är vulkan-hw, och ingen Vulkan överlämnades (den här datorn kanske saknar en Vulkan-drivrutin, eller så är den här Chimera äldre än sin Vulkan-brygga).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "Konsolens inställning för tidsformat, som spel läser för att visa tider.",
 		"setting.timezone": "Tidszon (minuter)",
 		"setting.timezone.about": "Konsolens tidszon som skillnad från UTC i minuter (-720 till 840). Spel läser den tillsammans med klockan.",
+		"slot.cheats": "Fusk",
+		"slot.cheats.help": "Fuskkoder i PPSSPP:s CWCheat-format: ett spels .ini eller en cheat.db med många spel. Bara de koder för spelet som spelas som är påslagna körs. En kods rad börjar med _C1 när den är på och _C0 när den är av, så ändra _C0 till _C1 för de koder du vill ha. Koderna körs hela tiden, och en film gjord med dem behöver samma fil för att spelas upp likadant; projektet noterar vilken fil det var. Lämna tomt för inget fusk.",
 		"slot.disc": "UMD-skiva",
 		"slot.disc.help": "PSP-spelet. Det kan vara en UMD-avbild (.iso, eller komprimerad .cso) eller hemmabyggt (en EBOOT .pbp, eller en vanlig .prx eller .elf).",
 		"slot.dlc": "DLC",

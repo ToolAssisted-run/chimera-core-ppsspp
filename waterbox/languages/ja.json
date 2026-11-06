@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 公式",
+		"error.cheats_missing": "チートファイル %1 がありません。",
 		"error.dlc_missing": "DLC %1 がありません。",
 		"error.dlc_refused": "DLC %1 はメモリースティックに入れられません: %2。「セーブデータを書き出す」が書き出す形のメモリースティックの zip、または %3 の下に置くフォルダーの zip である必要があります。",
 		"error.no_vulkan_bridge": "「レンダラー」の設定は vulkan-hw ですが、Vulkan が渡されませんでした（このコンピューターに Vulkan ドライバーがないか、この Chimera が Vulkan ブリッジより古い可能性があります）。",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "本体の時刻の形式の設定です。ゲームは時刻を表示するためにこれを読みます。",
 		"setting.timezone": "タイムゾーン（分）",
 		"setting.timezone.about": "本体のタイムゾーンで、UTC からの差を分で表します（-720 から 840）。ゲームは時計と合わせてこれを読みます。",
+		"slot.cheats": "チート",
+		"slot.cheats.help": "PPSSPP の CWCheat 形式のチートコードです。ゲームごとの .ini か、多くのゲームを含む cheat.db を使えます。実行されるのは、プレイ中のゲームのコードのうちオンになっているものだけです。コードの行はオンなら _C1、オフなら _C0 で始まるので、使いたいコードは _C0 を _C1 に変えてください。コードは常に実行され、それを使って作ったムービーを同じように再生するには同じファイルが必要です。プロジェクトはどのファイルだったかを記録します。チートを使わないなら空のままにします。",
 		"slot.disc": "UMD ディスク",
 		"slot.disc.help": "PSP のゲームです。UMD のダンプ（.iso、または圧縮された .cso）か、ホームブリュー（EBOOT の .pbp、または通常の .prx や .elf）にできます。",
 		"slot.dlc": "DLC",

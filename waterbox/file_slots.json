@@ -24,6 +24,14 @@
       "max": -1,
       "formats": ["zip"],
       "help": "slot.dlc.help"
+    },
+    {
+      "id": "cheats",
+      "title": "slot.cheats",
+      "min": 0,
+      "max": 1,
+      "formats": ["ini", "db"],
+      "help": "slot.cheats.help"
     }
   ]
 }

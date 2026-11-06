@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 ufficiale",
+		"error.cheats_missing": "Il file dei trucchi %1 non c'è.",
 		"error.dlc_missing": "Il DLC %1 non c'è.",
 		"error.dlc_refused": "Il DLC %1 non può andare sulla memory stick: %2. Deve essere uno zip della memory stick, come lo scrive Esporta dati di salvataggio, oppure delle cartelle da mettere sotto %3.",
 		"error.no_vulkan_bridge": "L'impostazione del renderer è vulkan-hw, ma non è stato fornito alcun Vulkan (questo computer potrebbe non avere un driver Vulkan, oppure questo Chimera è più vecchio del suo bridge Vulkan).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "L'impostazione del formato dell'ora della console, che i giochi leggono per mostrare gli orari.",
 		"setting.timezone": "Fuso orario (minuti)",
 		"setting.timezone.about": "Il fuso orario della console come differenza da UTC in minuti (da -720 a 840). I giochi lo leggono insieme all'orologio.",
+		"slot.cheats": "Trucchi",
+		"slot.cheats.help": "Codici trucco nel formato CWCheat di PPSSPP: il .ini di un gioco o un cheat.db con molti giochi. Vengono eseguiti solo i codici attivi del gioco in uso. La riga di un codice inizia con _C1 quando è attivo e con _C0 quando non lo è, quindi cambiate _C0 in _C1 per i codici che volete. I codici sono sempre in esecuzione, e un filmato fatto con essi richiede lo stesso file per essere riprodotto uguale; il progetto registra quale file era. Lasciate vuoto per nessun trucco.",
 		"slot.disc": "Disco UMD",
 		"slot.disc.help": "Il gioco PSP. Può essere un dump UMD (.iso, oppure .cso compresso) oppure homebrew (un EBOOT .pbp, o un semplice .prx o .elf).",
 		"slot.dlc": "DLC",

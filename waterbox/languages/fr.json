@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 officiel",
+		"error.cheats_missing": "Le fichier de codes %1 est introuvable.",
 		"error.dlc_missing": "Le DLC %1 n'est pas là.",
 		"error.dlc_refused": "Le DLC %1 ne peut pas être mis sur la carte mémoire : %2. Il doit être un zip de la carte mémoire, tel qu'écrit par Exporter les données de sauvegarde, ou des dossiers à placer sous %3.",
 		"error.no_vulkan_bridge": "Le réglage du moteur de rendu est vulkan-hw, et aucun Vulkan n'a été transmis (cet ordinateur n'a peut-être pas de pilote Vulkan, ou ce Chimera est plus ancien que son pont Vulkan).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "Le réglage du format d'heure de la console, que les jeux lisent pour afficher les heures.",
 		"setting.timezone": "Fuseau horaire (minutes)",
 		"setting.timezone.about": "Le fuseau horaire de la console, comme écart par rapport à UTC en minutes (de -720 à 840). Les jeux le lisent avec l'horloge.",
+		"slot.cheats": "Codes de triche",
+		"slot.cheats.help": "Codes de triche au format CWCheat de PPSSPP : le .ini d'un jeu ou un cheat.db qui en contient beaucoup. Seuls les codes activés du jeu en cours sont exécutés. La ligne d'un code commence par _C1 quand il est activé et par _C0 quand il ne l'est pas : remplacez _C0 par _C1 pour les codes voulus. Les codes s'exécutent en permanence, et une animation faite avec eux a besoin du même fichier pour se rejouer à l'identique ; le projet note de quel fichier il s'agissait. Laissez vide pour aucun code.",
 		"slot.disc": "Disque UMD",
 		"slot.disc.help": "Le jeu PSP. Cela peut être une copie UMD (.iso, ou .cso compressé) ou un programme fait maison (un EBOOT .pbp, ou un simple .prx ou .elf).",
 		"slot.dlc": "DLC",

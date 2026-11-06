@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 officieel",
+		"error.cheats_missing": "Het cheatbestand %1 is er niet.",
 		"error.dlc_missing": "De DLC %1 is er niet.",
 		"error.dlc_refused": "De DLC %1 kan niet op de geheugenstick: %2. Het moet een zip zijn van de geheugenstick, zoals Export Save Data die schrijft, of van de mappen die onder %3 moeten komen.",
 		"error.no_vulkan_bridge": "De renderer-instelling is vulkan-hw, en er is geen Vulkan aangeleverd (deze computer heeft misschien geen Vulkan-stuurprogramma, of deze Chimera is ouder dan de Vulkan-brug).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "De tijdnotatie-instelling van de console, die spellen lezen om tijden te tonen.",
 		"setting.timezone": "Tijdzone (minuten)",
 		"setting.timezone.about": "De tijdzone van de console als verschil met UTC in minuten (-720 tot 840). Spellen lezen die samen met de klok.",
+		"slot.cheats": "Cheats",
+		"slot.cheats.help": "Cheatcodes in het CWCheat-formaat van PPSSPP: de .ini van één spel, of een cheat.db met veel spellen. Alleen de ingeschakelde codes voor het gespeelde spel worden uitgevoerd. De regel van een code begint met _C1 als hij aan staat en met _C0 als hij uit staat, dus verander _C0 in _C1 voor de codes die u wilt. De codes lopen voortdurend, en een film die ermee gemaakt is heeft hetzelfde bestand nodig om hetzelfde af te spelen; het project legt vast welk bestand het was. Laat leeg voor geen cheats.",
 		"slot.disc": "UMD-schijf",
 		"slot.disc.help": "Het PSP-spel. Dit kan een UMD-kopie zijn (.iso, of gecomprimeerd .cso) of homebrew (een EBOOT .pbp, of een gewone .prx of .elf).",
 		"slot.dlc": "DLC",

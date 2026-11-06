@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 oficjalne",
+		"error.cheats_missing": "Pliku z kodami %1 nie ma.",
 		"error.dlc_missing": "Brak dodatku DLC %1.",
 		"error.dlc_refused": "Dodatku DLC %1 nie można umieścić na memory stick: %2. Musi to być zip z memory stick, zapisany przez Export Save Data, albo z folderów, które mają trafić do %3.",
 		"error.no_vulkan_bridge": "Ustawienie renderera to vulkan-hw, a Vulkan nie został przekazany (ten komputer może nie mieć sterownika Vulkan albo ta wersja programu Chimera jest starsza niż jej most Vulkan).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "Ustawienie formatu godziny w konsoli, które gry odczytują, żeby pokazać godzinę.",
 		"setting.timezone": "Strefa czasowa (minuty)",
 		"setting.timezone.about": "Strefa czasowa konsoli jako różnica od UTC w minutach (od -720 do 840). Gry odczytują ją razem z zegarem.",
+		"slot.cheats": "Kody",
+		"slot.cheats.help": "Kody w formacie CWCheat emulatora PPSSPP: plik .ini jednej gry albo cheat.db z wieloma grami. Działają tylko włączone kody dla granej gry. Wiersz kodu zaczyna się od _C1, gdy jest włączony, i od _C0, gdy jest wyłączony, więc zmień _C0 na _C1 przy kodach, których chcesz. Kody działają cały czas, a film nagrany z nimi potrzebuje tego samego pliku, aby odtworzył się tak samo; projekt zapisuje, który to był plik. Zostaw puste, jeśli nie chcesz kodów.",
 		"slot.disc": "Płyta UMD",
 		"slot.disc.help": "Gra na PSP. Może to być zrzut płyty UMD (.iso albo skompresowany .cso) lub program domowy (EBOOT .pbp, albo zwykły .prx lub .elf).",
 		"slot.dlc": "DLC",

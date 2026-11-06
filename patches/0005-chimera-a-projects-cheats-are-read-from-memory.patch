@@ -1,0 +1,43 @@
+diff --git a/Core/CwCheat.cpp b/Core/CwCheat.cpp
+index 704b875984..8006ddf948 100644
+--- a/Core/CwCheat.cpp
++++ b/Core/CwCheat.cpp
+@@ -49,8 +49,14 @@ static inline std::string TrimString(std::string_view s) {
+    return wsback > wsfront ? std::string(wsfront, wsback) : std::string();
+ }
+ 
++// chimera: the cheats a project holds, the file's bytes; when set, they are the
++// cheat file, read from memory (the sandbox has no folder a cheat file could be
++// written to), and no file is made on the memory stick's side
++std::string g_chimeraCheats;
++
+ CheatFileParser::CheatFileParser(const Path &filename, std::string_view gameID) {
+-	fp_ = File::OpenCFile(filename, "rt");
++	fp_ = !g_chimeraCheats.empty() ? fmemopen((void *)g_chimeraCheats.data(), g_chimeraCheats.size(), "r")
++		: File::OpenCFile(filename, "rt");
+ 	validGameID_ = ReplaceAll(gameID, "-", "");
+ }
+ 
+@@ -218,7 +224,7 @@ static void __CheatStart() {
+ 	cheatEngine = new CWCheatEngine(g_paramSFO.GetDiscID());
+ 	// This only generates ini files on boot, let's leave homebrew ini file for UI.
+ 	std::string realGameID = g_paramSFO.GetValueString("DISC_ID");
+-	if (!realGameID.empty()) {
++	if (!realGameID.empty() && g_chimeraCheats.empty()) {
+ 		cheatEngine->CreateCheatFile();
+ 	}
+ 
+diff --git a/Core/CwCheat.h b/Core/CwCheat.h
+index 3f8c22a655..e42016231a 100644
+--- a/Core/CwCheat.h
++++ b/Core/CwCheat.h
+@@ -81,6 +81,9 @@ class CWCheatEngine {
+ 	Path filename_;
+ };
+ 
++// chimera: the cheat file a project holds, its bytes (CwCheat.cpp)
++extern std::string g_chimeraCheats;
++
+ class CheatFileParser {
+ public:
+ 	CheatFileParser(const Path &filename, std::string_view gameID = "");

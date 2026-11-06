@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 resmi",
+		"error.cheats_missing": "%1 hile dosyası yok.",
 		"error.dlc_missing": "%1 DLC'si yok.",
 		"error.dlc_refused": "%1 DLC'si bellek çubuğuna konamıyor: %2. Export Save Data'nın yazdığı gibi bir bellek çubuğu zip'i ya da %3 altına konacak klasörlerin zip'i olmalı.",
 		"error.no_vulkan_bridge": "Renderer ayarı vulkan-hw, ama Vulkan'a hiç aktarılmadı (bu bilgisayarda Vulkan sürücüsü olmayabilir ya da bu Chimera, Vulkan köprüsünden eski olabilir).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "Konsolun saat biçimi ayarı; oyunlar saatleri göstermek için okur.",
 		"setting.timezone": "Saat dilimi (dakika)",
 		"setting.timezone.about": "Konsolun saat dilimi, UTC'den dakika cinsinden fark (-720 ile 840 arası). Oyunlar bunu saatle birlikte okur.",
+		"slot.cheats": "Hileler",
+		"slot.cheats.help": "PPSSPP'nin CWCheat biçiminde hile kodları: bir oyunun .ini dosyası ya da birçok oyunu içeren bir cheat.db. Yalnızca oynanan oyunun açık olan kodları çalışır. Bir kodun satırı açıkken _C1, kapalıyken _C0 ile başlar; istediğiniz kodlarda _C0'ı _C1 yapın. Kodlar sürekli çalışır ve onlarla yapılan bir filmin aynı şekilde oynatılması için aynı dosya gerekir; proje hangi dosya olduğunu kaydeder. Hile istemiyorsanız boş bırakın.",
 		"slot.disc": "UMD diski",
 		"slot.disc.help": "PSP oyunu. Bir UMD dökümü (.iso ya da sıkıştırılmış .cso) veya ev yapımı bir program (EBOOT .pbp, ya da düz bir .prx veya .elf) olabilir.",
 		"slot.dlc": "DLC",

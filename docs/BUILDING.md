@@ -272,6 +272,9 @@ the IR interpreter on both sides. Then:
 - `seed` - save data and DLC zips reach the memory stick before the machine
   starts, the same in both flavours; a zip that reaches outside the stick and
   a file that is no zip are refused.
+- `cheats` - a cheats file's code marked on writes into RAM and the one
+  marked off does not, nothing without the file, the same across a savestate
+  around every frame.
 - `savedata` - what the machine saved leaves through the save data export as
   the same tree natively, in the sandbox and with rerecord.
 - `pieces` - a file written through truncating opens keeps every piece (a
@@ -354,6 +357,9 @@ Project files, declared in `waterbox/file_slots.json`:
   writes or a zip of save folders taken off a memory stick.
 - DLC (any number): `.zip` files of a game's DLC folder as a memory stick
   holds it.
+- Cheats (optional): one CWCheat file, a game's `.ini` or a `cheat.db` that
+  holds many games. The codes of the running game marked `_C1` run; a code
+  marked `_C0` is off (chimera#532).
 
 ## Troubleshooting
 

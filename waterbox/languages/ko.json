@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 공식",
+		"error.cheats_missing": "치트 파일 %1이(가) 없습니다.",
 		"error.dlc_missing": "DLC %1이(가) 없습니다.",
 		"error.dlc_refused": "DLC %1을(를) 메모리 스틱에 넣을 수 없습니다: %2. Export Save Data가 쓰는 것과 같은 메모리 스틱의 zip이거나, %3 아래에 넣을 폴더들의 zip이어야 합니다.",
 		"error.no_vulkan_bridge": "렌더러 설정이 vulkan-hw인데 Vulkan이 전달되지 않았습니다(이 컴퓨터에 Vulkan 드라이버가 없거나, 이 Chimera가 Vulkan 브리지보다 오래되었을 수 있습니다).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "콘솔의 시간 형식 설정입니다. 게임이 시간을 표시할 때 읽습니다.",
 		"setting.timezone": "시간대(분)",
 		"setting.timezone.about": "콘솔의 시간대를 UTC와의 차이로, 분 단위(-720~840)로 씁니다. 게임은 이 값을 시계와 함께 읽습니다.",
+		"slot.cheats": "치트",
+		"slot.cheats.help": "PPSSPP의 CWCheat 형식 치트 코드입니다. 게임 하나의 .ini 또는 여러 게임이 들어 있는 cheat.db를 쓸 수 있습니다. 플레이 중인 게임의 코드 중 켜져 있는 것만 실행됩니다. 코드 줄은 켜져 있으면 _C1, 꺼져 있으면 _C0으로 시작하므로, 원하는 코드는 _C0을 _C1로 바꾸세요. 코드는 계속 실행되며, 이를 써서 만든 무비를 똑같이 재생하려면 같은 파일이 필요합니다. 프로젝트는 어떤 파일이었는지 기록합니다. 치트를 쓰지 않으려면 비워 두세요.",
 		"slot.disc": "UMD 디스크",
 		"slot.disc.help": "PSP 게임입니다. UMD 덤프(.iso, 또는 압축된 .cso) 또는 홈브루(EBOOT .pbp, 또는 일반 .prx나 .elf)가 될 수 있습니다.",
 		"slot.dlc": "DLC",

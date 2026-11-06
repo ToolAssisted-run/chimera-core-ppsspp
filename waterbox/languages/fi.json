@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 virallinen",
+		"error.cheats_missing": "Huijauskooditiedostoa %1 ei ole.",
 		"error.dlc_missing": "DLC:tä %1 ei ole.",
 		"error.dlc_refused": "DLC:tä %1 ei voi viedä muistitikulle: %2. Sen täytyy olla zip-tiedosto muistitikun sisällöstä, sellaisena kuin Export Save Data sen kirjoittaa, tai kansioista, jotka laitetaan kohtaan %3.",
 		"error.no_vulkan_bridge": "Renderöijän asetus on vulkan-hw, mutta Vulkan-laitetta ei annettu (tässä tietokoneessa ei ehkä ole Vulkan-ajuria, tai tämä Chimera on vanhempi kuin sen Vulkan-silta).",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "Konsolin kellonajan muotoasetus, jonka pelit lukevat ajan näyttämiseen.",
 		"setting.timezone": "Aikavyöhyke (minuuttia)",
 		"setting.timezone.about": "Konsolin aikavyöhyke erotuksena UTC-ajasta minuutteina (-720 - 840). Pelit lukevat sen yhdessä kellon kanssa.",
+		"slot.cheats": "Huijauskoodit",
+		"slot.cheats.help": "Huijauskoodit PPSSPP:n CWCheat-muodossa: pelin .ini tai monen pelin cheat.db. Vain pelattavan pelin päälle kytketyt koodit ajetaan. Koodin rivi alkaa merkinnällä _C1, kun se on päällä, ja _C0, kun se on pois, joten vaihda _C0 merkintään _C1 haluamissasi koodeissa. Koodit ovat käynnissä koko ajan, ja niiden kanssa tehty elokuva tarvitsee saman tiedoston toistuakseen samoin; projekti kirjaa, mikä tiedosto se oli. Jätä tyhjäksi, jos et halua huijauskoodeja.",
 		"slot.disc": "UMD-levy",
 		"slot.disc.help": "PSP-peli. Se voi olla UMD-kopio (.iso tai pakattu .cso) tai kotitekoinen ohjelma (EBOOT .pbp, tai tavallinen .prx tai .elf).",
 		"slot.dlc": "DLC",

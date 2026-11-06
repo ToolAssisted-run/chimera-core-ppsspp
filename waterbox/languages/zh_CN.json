@@ -1,6 +1,7 @@
 {
 	"texts": {
 		"common.6_61_official": "6.61 正式版",
+		"error.cheats_missing": "金手指文件 %1 不存在。",
 		"error.dlc_missing": "DLC %1 不存在。",
 		"error.dlc_refused": "DLC %1 无法放入记忆棒：%2。它必须是“导出存档数据”写出的记忆棒 zip，或放在 %3 之下的文件夹的 zip。",
 		"error.no_vulkan_bridge": "“渲染器”设置为 vulkan-hw，但没有交来任何 Vulkan（这台电脑可能没有 Vulkan 驱动，或此 Chimera 比它的 Vulkan 桥接更旧）。",
@@ -91,6 +92,8 @@
 		"setting.timeformat.about": "主机的时间格式设置，游戏会读取它来显示时间。",
 		"setting.timezone": "时区（分钟）",
 		"setting.timezone.about": "主机的时区，以相对 UTC 的分钟差表示（-720 至 840）。游戏会与时钟一起读取它。",
+		"slot.cheats": "金手指",
+		"slot.cheats.help": "PPSSPP 的 CWCheat 格式金手指：某个游戏的 .ini，或包含许多游戏的 cheat.db。只有正在玩的游戏中已开启的代码才会运行。代码行开启时以 _C1 开头，关闭时以 _C0 开头，所以请把想用的代码的 _C0 改成 _C1。代码会一直运行，用它们录制的影片需要同一个文件才能同样地回放；项目会记录是哪个文件。不需要金手指就留空。",
 		"slot.disc": "UMD 光盘",
 		"slot.disc.help": "PSP 游戏。可以是 UMD 转储（.iso，或压缩的 .cso），也可以是自制程序（EBOOT .pbp，或普通的 .prx 或 .elf）。",
 		"slot.dlc": "DLC",

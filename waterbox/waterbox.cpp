@@ -181,6 +181,25 @@ ECL_EXPORT int Init(void)
 		}
 	}
 
+	// The project's cheats (chimera#532): one CWCheat file, a game's .ini or a
+	// whole cheat.db, read once here and handed to PPSSPP, which runs the
+	// running game's cheats marked _C1 on its own timer in emulated time.
+	for (int i = 0; i < wbx_slot_count("cheats") && i < 1; i++) {
+		char name[256];
+		if (!wbx_slot_name("cheats", i, name, sizeof name))
+			continue;
+		if (FILE *f = fopen(name, "rb")) {
+			char chunk[65536];
+			size_t n;
+			while ((n = fread(chunk, 1, sizeof chunk, f)) > 0)
+				cfg.cheats.append(chunk, n);
+			fclose(f);
+		} else {
+			snprintf(g_loadError, sizeof g_loadError, "%s" TEXT_ARG "%s", "error.cheats_missing", name);
+			return 0;
+		}
+	}
+
 	// Where the Vulkan renderer's framebuffers are copied before a state: a
 	// block every state carries (address space only until something is
 	// written into it) and a scratch block no state carries. Reserved now,

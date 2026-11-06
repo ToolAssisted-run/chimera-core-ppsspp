@@ -16,6 +16,10 @@ struct PspDrvConfig {
 	std::string memstickDir;
 	// If set, mounted as host0:/umd0: (pspautotests convention).
 	std::string mountRoot;
+	// The cheats the project holds (chimera#532): a CWCheat file's bytes, a
+	// game's .ini or a whole cheat.db. PPSSPP keeps the running game's
+	// sections and runs the cheats marked _C1. Empty, cheats are off.
+	std::string cheats;
 	// CPU core: 0 = interpreter, 1 = JIT, 2 = IR interpreter (matches CPUCore).
 	// The default matches waterbox.config's cpuCore default: jit.
 	int cpuCore = 1;

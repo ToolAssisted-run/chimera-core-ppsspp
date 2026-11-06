@@ -32,6 +32,7 @@
 #include "Common/Thread/ThreadManager.h"
 #include "Common/TimeUtil.h"
 
+#include "Core/CwCheat.h"
 #include "Core/Config.h"
 #include "Core/ConfigValues.h"
 #include "Core/Core.h"
@@ -561,7 +562,8 @@ bool pspdrv_boot(const PspDrvConfig &cfg, std::string *error) {
 	g_Config.iReverbVolume = VOLUMEHI_FULL;
 	g_Config.internalDataDirectory.clear();
 	g_Config.bUseOldAtrac = false;
-	g_Config.bEnableCheats = false;
+	g_Config.bEnableCheats = !cfg.cheats.empty();
+	g_chimeraCheats = cfg.cheats;
 	g_Config.bEnableUPnP = false;
 	g_Config.bEnableNetworkChat = false;
 	g_Config.bDiscordRichPresence = false;
